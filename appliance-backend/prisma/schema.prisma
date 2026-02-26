@@ -1,0 +1,118 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Asset {
+  id        String   @id @default(cuid())
+  name      String
+  type      String
+  riskLevel String   @default("low")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  deletedAt DateTime?
+
+  @@index([type, riskLevel])
+  @@index([deletedAt, createdAt])
+}
+
+// --- Scanner: rules, findings, controls ---
+
+model ComplianceRule {
+  id           String   @id @default(cuid())
+  code         String   @unique
+  name         String
+  description  String?
+  resourceType String   // s3 | iam_user | security_group | rds | ebs | cloudtrail
+  severity     String   // critical | high | medium | low | informational
+  conditions   Json     // RuleCondition[]
+  controlIds   String[] // e.g. ["CIS-1.1", "SOC2-CC6.1"]
+  enabled      Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  findings Finding[]
+
+  @@index([resourceType, enabled])
+  @@index([code])
+}
+
+model Finding {
+  id           String   @id @default(cuid())
+  resourceId   String
+  resourceType String
+  ruleId       String
+  ruleCode     String
+  severity     String
+  message      String
+  status       String   @default("open") // open | acknowledged | resolved | suppressed
+  controlIds   String[]
+  rawResource  Json?    // snapshot of resource at finding time
+  scanJobId    String?
+  firstSeenAt  DateTime @default(now())
+  lastSeenAt   DateTime @updatedAt
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  rule    ComplianceRule @relation(fields: [ruleId], references: [id], onDelete: Cascade)
+  scanJob ScanJob?       @relation(fields: [scanJobId], references: [id], onDelete: SetNull)
+
+  @@unique([resourceId, ruleId])
+  @@index([status, severity])
+  @@index([ruleId])
+  @@index([resourceId])
+  @@index([scanJobId])
+}
+
+model Control {
+  id        String   @id @default(cuid())
+  controlId String   @unique // e.g. CIS-1.1
+  framework String?  // CIS | SOC2 | custom
+  name      String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([framework])
+}
+
+// --- Scan orchestration ---
+
+model ScanJob {
+  id          String   @id @default(cuid())
+  type        String   // full | incremental | on_demand
+  status      String   @default("pending") // pending | running | completed | failed
+  startedAt   DateTime?
+  completedAt DateTime?
+  errorMessage String?
+  resourceCount Int    @default(0)
+  findingCount Int    @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  collectedResources CollectedResource[]
+  findings          Finding[]
+
+  @@index([status, createdAt])
+}
+
+model CollectedResource {
+  id         String   @id @default(cuid())
+  scanJobId  String
+  resourceId String   // AWS resource identifier
+  resourceType String // s3 | iam_user | security_group | rds | ebs | cloudtrail
+  region     String
+  accountId  String?
+  metadata   Json     // normalized resource data
+  fetchedAt  DateTime @default(now())
+
+  scanJob ScanJob @relation(fields: [scanJobId], references: [id], onDelete: Cascade)
+
+  @@unique([scanJobId, resourceId, resourceType])
+  @@index([scanJobId])
+  @@index([resourceType])
+}
+
