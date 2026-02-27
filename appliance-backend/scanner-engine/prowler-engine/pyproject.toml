@@ -1,0 +1,18 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "prowler-engine"
+version = "1.0.0"
+description = "Prowler rule execution engine - runs rules via direct Python import (no CLI)"
+requires-python = ">=3.10"
+dependencies = [
+    "prowler>=4.0.0",
+    "fastapi>=0.104.0",
+    "uvicorn>=0.24.0",
+    "pytest>=8.0.0",
+]
+
+[project.scripts]
+prowler-engine = "prowler_engine.server:main"

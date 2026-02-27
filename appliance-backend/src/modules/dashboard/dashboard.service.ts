@@ -1,9 +1,13 @@
 import { Injectable } from "@nestjs/common";
 import { PrismaService } from "../../shared/prisma.service";
+import { CloudSploitScanService } from "../scanner-engine/cloudsploit/services/cloudsploit-scan.service";
 
 @Injectable()
 export class DashboardService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly cloudsploitScanService: CloudSploitScanService
+  ) {}
 
   async getMetrics() {
     const latestJob = await this.prisma.scanJob.findFirst({
@@ -29,6 +33,7 @@ export class DashboardService {
       activeViolations: findingCount,
       criticalRisks: criticalCount,
       frameworkCoverage: `${frameworkCoverage}%`,
+      cloudsploitExecution: this.cloudsploitScanService.getExecutionMetrics(),
     };
   }
 

@@ -10,6 +10,8 @@ import { AuditModule } from "./modules/audit/audit.module";
 import { MonitoringModule } from "./modules/monitoring/monitoring.module";
 import { LoggingModule } from "./modules/logging/logging.module";
 import { ScannerModule } from "./modules/scanner/scanner.module";
+import { ScannerEngineModule } from "./modules/scanner-engine/scanner-engine.module";
+import { CloudSploitModule } from "./modules/scanner-engine/cloudsploit/cloudsploit.module";
 import { DashboardModule } from "./modules/dashboard/dashboard.module";
 import { RulesModule } from "./modules/rules/rules.module";
 import { SchedulerModule } from "./modules/scheduler/scheduler.module";
@@ -32,6 +34,8 @@ import { PrismaService } from "./shared/prisma.service";
     MonitoringModule,
     LoggingModule,
     ScannerModule,
+    ScannerEngineModule,
+    CloudSploitModule,
     DashboardModule,
     RulesModule,
     SchedulerModule,

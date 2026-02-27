@@ -1,4 +1,19 @@
 services:
+  prowler-engine:
+    build:
+      context: ../appliance-backend/scanner-engine/prowler-engine
+      dockerfile: Dockerfile
+    ports:
+      - "8001:8001"
+    environment:
+      PROWLER_CORE: /app/prowler-core
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://localhost:8001/health')\" || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+
   postgres:
     image: postgres:16-alpine
     environment:
@@ -24,10 +39,13 @@ services:
       PORT: 8080
       NODE_ENV: production
       SCHEDULER_ENABLED: "false"
-      # Prowler (572+ checks) + CloudSploit (600+ plugins) - set to "false" to disable
+      PROWLER_ENGINE_URL: http://prowler-engine:8001
+      PROWLER_CORE: /opt/prowler-core
       ENABLE_PROWLER: "true"
       ENABLE_CLOUDSPLOIT: "true"
     depends_on:
+      prowler-engine:
+        condition: service_healthy
       postgres:
         condition: service_healthy
     healthcheck:

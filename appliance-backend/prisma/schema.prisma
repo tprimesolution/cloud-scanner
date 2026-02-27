@@ -80,6 +80,112 @@ model Control {
   @@index([framework])
 }
 
+// --- Prowler scanner engine: checks, compliance frameworks, mappings ---
+
+model ProwlerCheck {
+  id          String   @id @default(cuid())
+  provider    String   // aws | azure | gcp | kubernetes
+  service     String
+  checkName   String   @unique // e.g. iam_root_mfa_enabled
+  severity    String   // critical | high | medium | low
+  description String?  @db.Text
+  risk        String?  @db.Text
+  remediation String?  @db.Text
+  metadata    Json?    // full metadata.json preserved
+  enabled     Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([provider, service])
+  @@index([provider, severity])
+}
+
+model ComplianceFramework {
+  id        String   @id @default(cuid())
+  provider  String
+  name      String   // e.g. CIS Amazon Web Services Foundations Benchmark v1.5.0
+  framework String   // e.g. CIS
+  version   String?
+  source    String?  // e.g. cis_1.5_aws.json
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  complianceMappings ComplianceMapping[]
+
+  @@unique([provider, source])
+  @@index([provider])
+}
+
+model ComplianceMapping {
+  id          String   @id @default(cuid())
+  frameworkId String
+  controlId   String   // e.g. 1.9, 1.10
+  checkName   String   // maps to ProwlerCheck.checkName
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  framework ComplianceFramework @relation(fields: [frameworkId], references: [id], onDelete: Cascade)
+
+  @@unique([frameworkId, controlId, checkName])
+  @@index([checkName])
+  @@index([frameworkId])
+}
+
+// --- CloudSploit scanner engine ---
+
+model CloudSploitRule {
+  id          String   @id @default(cuid())
+  provider    String   // aws | azure | gcp | oci
+  service     String   // s3 | iam | ec2 | etc.
+  ruleName    String   @unique // e.g. bucketAllUsersAcl
+  severity    String   // critical | high | medium | low
+  description String?  @db.Text
+  compliance  Json?    // { hipaa: "...", pci: "...", cis1: "...", cis2: "..." }
+  enabled     Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  scanResults CloudSploitScanResult[]
+
+  @@index([provider, service])
+  @@index([provider, severity])
+}
+
+model CloudSploitScan {
+  id          String   @id @default(cuid())
+  provider    String
+  status      String   @default("pending") // pending | running | completed | failed
+  startedAt   DateTime?
+  completedAt DateTime?
+  errorMessage String?
+  resultCount Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  results CloudSploitScanResult[]
+
+  @@index([status, createdAt])
+}
+
+model CloudSploitScanResult {
+  id          String   @id @default(cuid())
+  scanId      String
+  ruleId      String
+  ruleName    String   // plugin id for display when rule not yet synced
+  status      String   // PASS | FAIL | INFO
+  resourceId   String?
+  region      String?
+  message     String?  @db.Text
+  raw         Json?
+  timestamp   DateTime @default(now())
+
+  scan CloudSploitScan @relation(fields: [scanId], references: [id], onDelete: Cascade)
+  rule CloudSploitRule @relation(fields: [ruleId], references: [id], onDelete: Cascade)
+
+  @@index([scanId])
+  @@index([ruleId])
+}
+
 // --- Scan orchestration ---
 
 model ScanJob {
