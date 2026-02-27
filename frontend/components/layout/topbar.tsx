@@ -26,7 +26,11 @@ export function Topbar() {
             if (!s.scanInProgress) {
               clearInterval(poll);
               clearTimeout(timeoutId);
-              setScanStatus("Complete.");
+              const lastJob = s.lastJob;
+              const errMsg = lastJob?.status === "failed" && lastJob?.errorMessage
+                ? (lastJob.errorMessage.length > 80 ? lastJob.errorMessage.slice(0, 77) + "..." : lastJob.errorMessage)
+                : null;
+              setScanStatus(errMsg ? `Failed: ${errMsg}` : "Complete.");
               setScanning(false);
               router.refresh();
               window.dispatchEvent(new CustomEvent("scan-complete"));

@@ -13,11 +13,21 @@ export class ScannerService {
     private readonly prisma: PrismaService,
   ) {}
 
-  getStatus(): { ready: boolean; scanInProgress: boolean; queueLength: number } {
+  async getStatus(): Promise<{
+    ready: boolean;
+    scanInProgress: boolean;
+    queueLength: number;
+    lastJob?: { status: string; errorMessage?: string | null };
+  }> {
+    const lastJob = await this.prisma.scanJob.findFirst({
+      orderBy: { createdAt: "desc" },
+      select: { status: true, errorMessage: true },
+    });
     return {
       ready: true,
       scanInProgress: this.queue.isProcessing(),
       queueLength: this.queue.getQueueLength(),
+      lastJob: lastJob ? { status: lastJob.status, errorMessage: lastJob.errorMessage } : undefined,
     };
   }
 

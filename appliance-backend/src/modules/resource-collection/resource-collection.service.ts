@@ -11,7 +11,24 @@ import {
   CloudTrailFetcher,
 } from "./fetchers";
 
-const DEFAULT_REGIONS = ["us-east-1"];
+/** Common AWS regions for account-wide scanning. Add more as needed. */
+const DEFAULT_REGIONS = [
+  "us-east-1",
+  "us-east-2",
+  "us-west-1",
+  "us-west-2",
+  "eu-west-1",
+  "eu-west-2",
+  "eu-central-1",
+  "eu-north-1",
+  "ap-south-1",
+  "ap-southeast-1",
+  "ap-southeast-2",
+  "ap-northeast-1",
+  "ap-northeast-2",
+  "sa-east-1",
+  "ca-central-1",
+];
 
 @Injectable()
 export class ResourceCollectionService {
@@ -55,8 +72,8 @@ export class ResourceCollectionService {
             await this.writeBatch(scanJobId, batch);
           }
         } catch (err) {
-          // Log but continue with other fetchers/regions
           console.error(`Fetcher ${fetcher.resourceType} failed for region ${region}:`, err);
+          // Continue with other fetchers/regions - partial results (e.g. S3+IAM) still useful
         }
       }
     }

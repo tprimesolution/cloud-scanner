@@ -6,8 +6,16 @@ export class DashboardService {
   constructor(private readonly prisma: PrismaService) {}
 
   async getMetrics() {
-    const [assetCount, findingCount, criticalCount, totalRules] = await Promise.all([
-      this.prisma.asset.count({ where: { deletedAt: null } }),
+    const latestJob = await this.prisma.scanJob.findFirst({
+      where: { status: "completed" },
+      orderBy: { completedAt: "desc" },
+      select: { id: true },
+    });
+    const assetCount = latestJob
+      ? await this.prisma.collectedResource.count({ where: { scanJobId: latestJob.id } })
+      : 0;
+
+    const [findingCount, criticalCount, totalRules] = await Promise.all([
       this.prisma.finding.count({ where: { status: "open" } }),
       this.prisma.finding.count({ where: { status: "open", severity: "critical" } }),
       this.prisma.complianceRule.count({ where: { enabled: true } }),

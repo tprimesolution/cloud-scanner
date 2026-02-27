@@ -10,6 +10,7 @@ export async function getScannerStatus() {
     ready: boolean;
     scanInProgress: boolean;
     queueLength: number;
+    lastJob?: { status: string; errorMessage?: string | null };
   }>("/scanner/status");
   return data;
 }

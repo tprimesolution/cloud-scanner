@@ -37,4 +37,10 @@ export class ComplianceMappingService {
   getFrameworks(): Framework[] {
     return ["CIS", "SOC2", "HIPAA", "ISO27001", "PCIDSS"];
   }
+
+  getControlIdsForFramework(framework: string): string[] {
+    return Object.entries(this.controlMap)
+      .filter(([, v]) => v.framework === framework)
+      .map(([k]) => k);
+  }
 }

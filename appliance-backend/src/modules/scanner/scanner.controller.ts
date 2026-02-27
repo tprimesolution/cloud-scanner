@@ -6,7 +6,7 @@ export class ScannerController {
   constructor(private readonly scannerService: ScannerService) {}
 
   @Get("status")
-  getStatus() {
+  async getStatus() {
     return this.scannerService.getStatus();
   }
 

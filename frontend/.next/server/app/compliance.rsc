@@ -1,11 +1,11 @@
 1:HL["/_next/static/css/d2fa82f7218f8cf3.css","style",{"crossOrigin":""}]
-0:["GoGqfhk1QyDpCiZN6XuPH",[[["",{"children":["(app)",{"children":["compliance",{"children":["__PAGE__",{}]}]}]},"$undefined","$undefined",true],"$L2",[[["$","link","0",{"rel":"stylesheet","href":"/_next/static/css/d2fa82f7218f8cf3.css","precedence":"next","crossOrigin":""}]],"$L3"]]]]
+0:["V7fbrAJaLxMFjrSI7mUVe",[[["",{"children":["(app)",{"children":["compliance",{"children":["__PAGE__",{}]}]}]},"$undefined","$undefined",true],"$L2",[[["$","link","0",{"rel":"stylesheet","href":"/_next/static/css/d2fa82f7218f8cf3.css","precedence":"next","crossOrigin":""}]],"$L3"]]]]
 4:I[56954,[],""]
 5:I[7264,[],""]
-6:I[2289,["895","static/chunks/895-e98e8ad6981eb370.js","384","static/chunks/384-dba5f500c4f4c44e.js","382","static/chunks/382-36b6b3f5729ada61.js","814","static/chunks/app/(app)/layout-01a3c98141df1823.js"],"Sidebar"]
-7:I[47965,["895","static/chunks/895-e98e8ad6981eb370.js","384","static/chunks/384-dba5f500c4f4c44e.js","382","static/chunks/382-36b6b3f5729ada61.js","814","static/chunks/app/(app)/layout-01a3c98141df1823.js"],"Topbar"]
+6:I[2289,["895","static/chunks/895-e98e8ad6981eb370.js","384","static/chunks/384-dba5f500c4f4c44e.js","382","static/chunks/382-36b6b3f5729ada61.js","814","static/chunks/app/(app)/layout-094b2053d7e33397.js"],"Sidebar"]
+7:I[47965,["895","static/chunks/895-e98e8ad6981eb370.js","384","static/chunks/384-dba5f500c4f4c44e.js","382","static/chunks/382-36b6b3f5729ada61.js","814","static/chunks/app/(app)/layout-094b2053d7e33397.js"],"Topbar"]
 d:I[48297,[],""]
-e:I[51693,["895","static/chunks/895-e98e8ad6981eb370.js","384","static/chunks/384-dba5f500c4f4c44e.js","382","static/chunks/382-36b6b3f5729ada61.js","169","static/chunks/app/(app)/compliance/page-2fad760cd11d7b00.js"],""]
+e:I[51693,["895","static/chunks/895-e98e8ad6981eb370.js","384","static/chunks/384-dba5f500c4f4c44e.js","382","static/chunks/382-36b6b3f5729ada61.js","169","static/chunks/app/(app)/compliance/page-b079028c4780cc15.js"],""]
 8:{"fontFamily":"system-ui,\"Segoe UI\",Roboto,Helvetica,Arial,sans-serif,\"Apple Color Emoji\",\"Segoe UI Emoji\"","height":"100vh","textAlign":"center","display":"flex","flexDirection":"column","alignItems":"center","justifyContent":"center"}
 9:{"display":"inline-block","margin":"0 20px 0 0","padding":"0 23px 0 0","fontSize":24,"fontWeight":500,"verticalAlign":"top","lineHeight":"49px"}
 a:{"display":"inline-block"}

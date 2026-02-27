@@ -75,7 +75,7 @@ export default function CompliancePage() {
           Compliance
         </h1>
         <p className="text-xs text-slate-400">
-          41 frameworks & 17 categories — framework-specific and category views.
+          {loading ? "Loading..." : `${frameworks.length} frameworks & ${categories.length} categories`} — framework-specific and category views.
         </p>
       </div>
 
@@ -115,7 +115,7 @@ export default function CompliancePage() {
               className="text-xs"
             >
               <Shield className="mr-1.5 h-3.5 w-3.5" />
-              41 Frameworks
+              {frameworks.length} Frameworks
             </Button>
             <Button
               variant={viewMode === "categories" ? "default" : "outline"}
@@ -124,7 +124,7 @@ export default function CompliancePage() {
               className="text-xs"
             >
               <FolderOpen className="mr-1.5 h-3.5 w-3.5" />
-              17 Categories
+              {categories.length} Categories
             </Button>
           </CardContent>
         </Card>
@@ -142,6 +142,9 @@ export default function CompliancePage() {
           {loading ? (
             <p className="text-slate-400">Loading...</p>
           ) : viewMode === "frameworks" ? (
+            frameworks.length === 0 ? (
+              <p className="text-slate-400 text-sm py-4">No frameworks available.</p>
+            ) : (
             <div className="space-y-1 max-h-[400px] overflow-y-auto">
               {frameworks.map((f) => (
                 <div key={f.frameworkId} className="border-b border-slate-800/50 last:border-0">
@@ -202,7 +205,11 @@ export default function CompliancePage() {
                 </div>
               ))}
             </div>
+            )
           ) : (
+            categories.length === 0 ? (
+              <p className="text-slate-400 text-sm py-4">No categories available.</p>
+            ) : (
             <div className="space-y-1 max-h-[400px] overflow-y-auto">
               {categories.map((c) => (
                 <div key={c.categoryId} className="border-b border-slate-800/50 last:border-0">
@@ -254,6 +261,7 @@ export default function CompliancePage() {
                 </div>
               ))}
             </div>
+            )
           )}
         </CardContent>
       </Card>
