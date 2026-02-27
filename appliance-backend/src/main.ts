@@ -1,5 +1,6 @@
 import "reflect-metadata";
 import { NestFactory } from "@nestjs/core";
+import { NestExpressApplication } from "@nestjs/platform-express";
 import { AppModule } from "./app.module";
 import { ValidationPipe } from "@nestjs/common";
 import helmet from "helmet";
@@ -7,12 +8,15 @@ import compression from "compression";
 import rateLimit from "express-rate-limit";
 
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule, {
+  const app = await NestFactory.create<NestExpressApplication>(AppModule, {
     logger: process.env.NODE_ENV === "production" ? ["error", "warn"] : ["log", "error", "warn", "debug"],
   });
 
   app.setGlobalPrefix("api");
   app.enableCors({ origin: true });
+
+  // Trust X-Forwarded-For when behind nginx/reverse proxy (required for express-rate-limit)
+  app.set("trust proxy", true);
 
   app.use(helmet());
   app.use(compression());
