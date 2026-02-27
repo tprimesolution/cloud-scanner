@@ -13,6 +13,27 @@ log() { echo -e "${GREEN}[*]${NC} $1"; }
 warn() { echo -e "${YELLOW}[!]${NC} $1"; }
 err() { echo -e "${RED}[x]${NC} $1"; exit 1; }
 
+buildx_version_ge() {
+  # Returns 0 if current buildx version >= required version.
+  required="$1"
+  current="$2"
+  [ -z "$current" ] && return 1
+  smallest="$(printf '%s\n%s\n' "$required" "$current" | sort -V | head -n1)"
+  [ "$smallest" = "$required" ]
+}
+
+detect_buildx_version() {
+  docker buildx version 2>/dev/null | awk '{
+    for (i = 1; i <= NF; i++) {
+      if ($i ~ /^v?[0-9]+\.[0-9]+\.[0-9]+$/) {
+        gsub(/^v/, "", $i)
+        print $i
+        exit
+      }
+    }
+  }'
+}
+
 FORCE_REBUILD=0
 STATUS_ONLY=0
 
@@ -140,10 +161,20 @@ main() {
     DOCKER_COMPOSE="docker compose"
   fi
 
-  # Enable modern BuildKit caching and parallel builds.
-  export DOCKER_BUILDKIT=1
-  export COMPOSE_DOCKER_CLI_BUILD=1
-  export BUILDKIT_PROGRESS=auto
+  # Prefer BuildKit only when buildx is available and recent enough.
+  USE_BUILDKIT=0
+  BUILDX_VERSION="$(detect_buildx_version || true)"
+  if buildx_version_ge "0.17.0" "$BUILDX_VERSION"; then
+    USE_BUILDKIT=1
+    export DOCKER_BUILDKIT=1
+    export COMPOSE_DOCKER_CLI_BUILD=1
+    export BUILDKIT_PROGRESS=auto
+    log "Using BuildKit/buildx v$BUILDX_VERSION (parallel build enabled)."
+  else
+    warn "Docker buildx v0.17.0+ not found (detected: ${BUILDX_VERSION:-none})."
+    warn "Falling back to classic compose build mode (no parallel build)."
+    unset DOCKER_BUILDKIT COMPOSE_DOCKER_CLI_BUILD BUILDKIT_PROGRESS
+  fi
 
   STATE_FILE="$DEPLOY_DIR/.build-state.sha256"
   BUILD_INPUTS=(
@@ -203,8 +234,12 @@ main() {
 
   cd "$DEPLOY_DIR"
   if [ "$NEED_BUILD" = "1" ]; then
-    if ! $DOCKER_COMPOSE -f "$COMPOSE_FILE" build --parallel; then
-      err "Parallel build failed. Ensure Docker BuildKit/buildx is available."
+    if [ "$USE_BUILDKIT" = "1" ]; then
+      if ! $DOCKER_COMPOSE -f "$COMPOSE_FILE" build --parallel; then
+        warn "Parallel build failed. Retrying with classic compose build mode."
+        USE_BUILDKIT=0
+        unset DOCKER_BUILDKIT COMPOSE_DOCKER_CLI_BUILD BUILDKIT_PROGRESS
+      fi
     fi
     if ! $DOCKER_COMPOSE -f "$COMPOSE_FILE" up -d --build; then
       err "Compose up --build failed. Ensure Docker and Docker Compose are installed and try again."
