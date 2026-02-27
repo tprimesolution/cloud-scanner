@@ -20,10 +20,17 @@ WORKDIR /app
 
 ENV NODE_ENV=production
 ENV PORT=8080
+ENV CLOUDSPLOIT_DIR=/opt/cloudsploit
+
+# Install Prowler (Python) + CloudSploit (Node) for full rule coverage
+RUN apk add --no-cache python3 py3-pip git su-exec openssl && \
+    pip3 install --break-system-packages prowler && \
+    git clone --depth 1 https://github.com/aquasecurity/cloudsploit.git /opt/cloudsploit && \
+    cd /opt/cloudsploit && npm install --omit=dev && \
+    apk del git
 
 # Minimal footprint
 RUN addgroup -g 1001 -S app && adduser -S app -u 1001 -G app
-RUN apk add --no-cache su-exec openssl
 
 COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/dist ./dist

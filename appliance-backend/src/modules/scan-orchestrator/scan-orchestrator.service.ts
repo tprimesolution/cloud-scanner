@@ -3,6 +3,7 @@ import { PrismaService } from "../../shared/prisma.service";
 import { ResourceCollectionService } from "../resource-collection/resource-collection.service";
 import { RuleEngineService } from "../rule-engine/rule-engine.service";
 import { FindingsService } from "../findings/findings.service";
+import { ExternalScannerService } from "../external-scanner/external-scanner.service";
 import { ScanQueueService } from "./scan-queue.service";
 import type { ScanJobResult, ScanJobType } from "./interfaces/scan-job.interface";
 import type { ScanConfig } from "./interfaces/scan-config.interface";
@@ -17,6 +18,7 @@ export class ScanOrchestratorService {
     private readonly resourceCollection: ResourceCollectionService,
     private readonly ruleEngine: RuleEngineService,
     private readonly findings: FindingsService,
+    private readonly externalScanner: ExternalScannerService,
     private readonly queue: ScanQueueService,
   ) {}
 
@@ -130,6 +132,19 @@ export class ScanOrchestratorService {
         await this.findings.upsertFromViolation(v, scanJobId);
         findingCount++;
       }
+    }
+
+    // Run Prowler (572+ checks) and CloudSploit (600+ plugins) for full coverage
+    const enableProwler = process.env.ENABLE_PROWLER !== "false";
+    const enableCloudSploit = process.env.ENABLE_CLOUDSPLOIT !== "false";
+    if (enableProwler || enableCloudSploit) {
+      const externalCount = await this.externalScanner.runExternalScans(scanJobId, {
+        enableProwler,
+        enableCloudSploit,
+        prowlerCompliance: process.env.PROWLER_COMPLIANCE,
+        cloudsploitCompliance: process.env.CLOUDSPLOIT_COMPLIANCE,
+      });
+      findingCount += externalCount;
     }
 
     await this.prisma.scanJob.update({

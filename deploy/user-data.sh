@@ -4,7 +4,7 @@
 # 1. Replace REPO_URL with your git repo (public: https://github.com/your-org/cs.git)
 # 2. For private repo: use https://TOKEN@github.com/org/repo.git
 # 3. Open port 80 in EC2 Security Group (inbound)
-# 4. Attach IAM role for AWS scanning (optional)
+# 4. Attach IAM role with deploy/iam-policy-nimbus-scanner.json for full AWS coverage
 
 set -e
 exec > >(tee /var/log/user-data.log) 2>&1

@@ -24,6 +24,9 @@ services:
       PORT: 8080
       NODE_ENV: production
       SCHEDULER_ENABLED: "false"
+      # Prowler (572+ checks) + CloudSploit (600+ plugins) - set to "false" to disable
+      ENABLE_PROWLER: "true"
+      ENABLE_CLOUDSPLOIT: "true"
     depends_on:
       postgres:
         condition: service_healthy

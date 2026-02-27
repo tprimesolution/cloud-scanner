@@ -2,6 +2,7 @@ import { Injectable } from "@nestjs/common";
 import { PrismaService } from "../../shared/prisma.service";
 import type { Violation } from "../rule-engine/rule-evaluator.service";
 import { PluginLoaderService } from "../rule-engine/plugin-loader.service";
+import type { ExternalFinding } from "../external-scanner/interfaces/external-finding.interface";
 
 @Injectable()
 export class FindingsService {
@@ -87,6 +88,69 @@ export class FindingsService {
     await this.prisma.finding.update({
       where: { id },
       data: { status },
+    });
+  }
+
+  /** Upsert finding from Prowler or CloudSploit. Creates ComplianceRule on first sight. */
+  async upsertFromExternalFinding(f: ExternalFinding, scanJobId?: string): Promise<void> {
+    const rule = await this.ensureExternalRule({
+      code: f.ruleCode,
+      name: f.ruleName,
+      resourceType: f.resourceType,
+      severity: f.severity,
+      controlIds: f.controlIds,
+    });
+    if (!rule) return;
+
+    await this.prisma.finding.upsert({
+      where: {
+        resourceId_ruleId: {
+          resourceId: f.resourceId,
+          ruleId: rule.id,
+        },
+      },
+      create: {
+        resourceId: f.resourceId,
+        resourceType: f.resourceType,
+        ruleId: rule.id,
+        ruleCode: f.ruleCode,
+        severity: f.severity,
+        message: f.message,
+        controlIds: f.controlIds,
+        rawResource: f.rawResource as object,
+        scanJobId,
+      },
+      update: {
+        lastSeenAt: new Date(),
+        rawResource: f.rawResource as object,
+        scanJobId,
+      },
+    });
+  }
+
+  private async ensureExternalRule(rule: {
+    code: string;
+    name: string;
+    resourceType: string;
+    severity: string;
+    controlIds: string[];
+  }): Promise<{ id: string } | null> {
+    const existing = await this.prisma.complianceRule.findUnique({
+      where: { code: rule.code },
+    });
+    if (existing) return existing;
+
+    return this.prisma.complianceRule.create({
+      data: {
+        code: rule.code,
+        name: rule.name,
+        description: null,
+        resourceType: rule.resourceType,
+        severity: rule.severity,
+        conditions: [],
+        controlIds: rule.controlIds,
+        enabled: true,
+      },
     });
   }
 }
