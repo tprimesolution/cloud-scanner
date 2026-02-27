@@ -19,10 +19,11 @@ echo "[*] Installing dependencies..."
 dnf update -y
 dnf install -y docker git
 
-# Docker Compose
-mkdir -p /usr/libexec/docker/cli-plugins
-curl -sSL "https://github.com/docker/compose/releases/latest/download/docker-compose-linux-$(uname -m)" -o /usr/libexec/docker/cli-plugins/docker-compose
-chmod +x /usr/libexec/docker/cli-plugins/docker-compose
+# Docker Compose (standalone - works with older Docker)
+ARCH=$(uname -m)
+[ "$ARCH" = "x86_64" ] || ARCH="aarch64"
+curl -sSL "https://github.com/docker/compose/releases/latest/download/docker-compose-linux-${ARCH}" -o /usr/local/bin/docker-compose
+chmod +x /usr/local/bin/docker-compose
 
 # Start Docker
 systemctl start docker
@@ -38,6 +39,13 @@ echo "[*] Building and starting services..."
 cd "$INSTALL_DIR/deploy"
 COMPOSE_FILE="docker-compose.python.yml"
 [ -f "$COMPOSE_FILE" ] || COMPOSE_FILE="docker-compose.yml"
-docker compose -f "$COMPOSE_FILE" up -d --build
+export DOCKER_BUILDKIT=0
+export COMPOSE_DOCKER_CLI_BUILD=0
+
+if ! docker-compose -f "$COMPOSE_FILE" up -d --build 2>/dev/null; then
+  echo "[*] Compose build failed (buildx?). Using legacy build..."
+  chmod +x build-legacy.sh
+  ./build-legacy.sh
+fi
 
 echo "[*] Done. UI at http://$(curl -s http://169.254.169.254/latest/meta-data/public-ipv4):80"

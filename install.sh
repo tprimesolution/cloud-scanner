@@ -34,20 +34,21 @@ install_docker_al2023() {
   log "Docker installed."
 }
 
-# Install Docker Compose
+# Install Docker Compose (standalone binary - works with older Docker)
 install_docker_compose() {
-  if command -v docker compose &>/dev/null; then
+  if docker-compose version &>/dev/null; then
+    log "Docker Compose already installed."
+    return
+  fi
+  if docker compose version &>/dev/null 2>&1; then
     log "Docker Compose (plugin) already installed."
     return
   fi
-  if command -v docker-compose &>/dev/null; then
-    log "Docker Compose (standalone) already installed."
-    return
-  fi
   log "Installing Docker Compose..."
-  sudo mkdir -p /usr/libexec/docker/cli-plugins
-  sudo curl -sSL "https://github.com/docker/compose/releases/latest/download/docker-compose-linux-$(uname -m)" -o /usr/libexec/docker/cli-plugins/docker-compose
-  sudo chmod +x /usr/libexec/docker/cli-plugins/docker-compose
+  ARCH=$(uname -m)
+  [ "$ARCH" = "x86_64" ] && ARCH="x86_64" || ARCH="aarch64"
+  sudo curl -sSL "https://github.com/docker/compose/releases/latest/download/docker-compose-linux-${ARCH}" -o /usr/local/bin/docker-compose
+  sudo chmod +x /usr/local/bin/docker-compose
   log "Docker Compose installed."
 }
 
@@ -67,6 +68,8 @@ main() {
   log "Nimbus Guard - Single-click installer"
   log "Target: Amazon Linux (2023 or 2)"
 
+  # Skip Docker install if SKIP_DEPS=1 (for testing when Docker already installed)
+  if [ "${SKIP_DEPS:-0}" != "1" ]; then
   OS=$(detect_os)
   case "$OS" in
     amzn)
@@ -83,6 +86,7 @@ main() {
   esac
 
   install_docker_compose
+  fi
 
   # Resolve project root (directory containing install.sh)
   SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -102,24 +106,47 @@ main() {
 
   cd "$DEPLOY_DIR"
 
+  # Use docker-compose (standalone) or docker compose (plugin)
+  if docker-compose version &>/dev/null; then
+    DOCKER_COMPOSE="docker-compose"
+  else
+    DOCKER_COMPOSE="docker compose"
+  fi
+
   # Ensure docker is running (may need newgrp for group)
   if ! docker info &>/dev/null; then
     warn "Docker may require a new session. Run: sudo usermod -aG docker $USER && newgrp docker"
-    warn "Then run: cd $DEPLOY_DIR && docker compose -f $COMPOSE_FILE up -d --build"
+    warn "Then run: cd $DEPLOY_DIR && $DOCKER_COMPOSE -f $COMPOSE_FILE up -d --build"
     exit 1
   fi
 
-  docker compose -f "$COMPOSE_FILE" up -d --build
+  # Use legacy builder if buildx is too old (common on Amazon Linux)
+  export DOCKER_BUILDKIT=0
+  export COMPOSE_DOCKER_CLI_BUILD=0
+  USED_LEGACY=false
+  if ! $DOCKER_COMPOSE -f "$COMPOSE_FILE" up -d --build 2>/dev/null; then
+    warn "Compose build failed (buildx?). Trying legacy build..."
+    if [ -f "$DEPLOY_DIR/build-legacy.sh" ]; then
+      chmod +x "$DEPLOY_DIR/build-legacy.sh"
+      "$DEPLOY_DIR/build-legacy.sh"
+      USED_LEGACY=true
+    else
+      err "Build failed. Install buildx or run: cd $DEPLOY_DIR && ./build-legacy.sh"
+    fi
+  fi
+
+  [ "$USED_LEGACY" = true ] && COMPOSE_FILE="docker-compose.legacy.yml"
 
   log "Done!"
   echo ""
-  HOST=$(curl -s --connect-timeout 1 http://169.254.169.254/latest/meta-data/public-ipv4 2>/dev/null || hostname -I 2>/dev/null | awk '{print $1}' || echo 'localhost')
+  HOST=$(curl -s --connect-timeout 1 http://169.254.169.254/latest/meta-data/public-ipv4 2>/dev/null || (hostname -I 2>/dev/null | awk '{print $1}') || hostname 2>/dev/null || echo 'localhost')
+  [ -z "$HOST" ] && HOST="localhost"
   echo "  Nimbus Guard is running."
   echo "  Access the UI at:  http://${HOST}:80"
   echo ""
   echo "  Commands:"
-  echo "    View logs:  cd $DEPLOY_DIR && docker compose -f $COMPOSE_FILE logs -f"
-  echo "    Stop:      cd $DEPLOY_DIR && docker compose -f $COMPOSE_FILE down"
+  echo "    View logs:  cd $DEPLOY_DIR && $DOCKER_COMPOSE -f $COMPOSE_FILE logs -f"
+  echo "    Stop:      cd $DEPLOY_DIR && $DOCKER_COMPOSE -f $COMPOSE_FILE down"
   echo ""
 }
 
