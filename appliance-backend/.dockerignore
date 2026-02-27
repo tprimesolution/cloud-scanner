@@ -6,3 +6,13 @@ dist
 .env.*
 !.env.example
 .DS_Store
+coverage
+tmp
+logs
+**/*.log
+.idea
+.vscode
+test
+tests
+scripts
+agent-transcripts

@@ -8,6 +8,24 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+enum ComplianceControlState {
+  PASSED
+  FAILED
+  NOT_EVALUATED
+  NOT_APPLICABLE
+}
+
+enum CriteriaScopeStatus {
+  IN_SCOPE
+  OUT_OF_SCOPE
+}
+
+enum ControlReadinessStatus {
+  READY
+  PARTIAL
+  NOT_READY
+}
+
 model Asset {
   id        String   @id @default(cuid())
   name      String
@@ -131,6 +149,24 @@ model ComplianceMapping {
   @@index([frameworkId])
 }
 
+model ComplianceControlStatus {
+  id              String                 @id @default(cuid())
+  scanId          String                 @map("scan_id")
+  framework       String
+  controlId       String                 @map("control_id")
+  checkId         String                 @map("check_id")
+  status          ComplianceControlState
+  isNotApplicable Boolean                @default(false) @map("is_not_applicable")
+  createdAt       DateTime               @default(now()) @map("created_at")
+  updatedAt       DateTime               @updatedAt @map("updated_at")
+
+  @@unique([scanId, framework, controlId, checkId], map: "compliance_control_status_scan_framework_control_check_key")
+  @@index([scanId], map: "compliance_control_status_scan_id_idx")
+  @@index([framework], map: "compliance_control_status_framework_idx")
+  @@index([checkId], map: "compliance_control_status_check_id_idx")
+  @@map("compliance_control_status")
+}
+
 // --- CloudSploit scanner engine ---
 
 model CloudSploitRule {
@@ -221,5 +257,158 @@ model CollectedResource {
   @@unique([scanJobId, resourceId, resourceType])
   @@index([scanJobId])
   @@index([resourceType])
+}
+
+// --- Enterprise compliance coverage domain ---
+
+model FrameworkCatalog {
+  id          String   @id @default(cuid())
+  name        String
+  version     String?
+  category    String?
+  region      String?
+  description String?
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  areas           FrameworkArea[]
+  frameworkStatus FrameworkStatus[]
+
+  @@index([name], map: "frameworks_name_idx")
+  @@map("frameworks")
+}
+
+model FrameworkArea {
+  id          String   @id @default(cuid())
+  frameworkId String   @map("framework_id")
+  name        String
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  framework FrameworkCatalog  @relation(fields: [frameworkId], references: [id], onDelete: Cascade)
+  criteria  FrameworkCriteria[]
+
+  @@index([frameworkId], map: "framework_areas_framework_id_idx")
+  @@map("framework_areas")
+}
+
+model FrameworkCriteria {
+  id          String             @id @default(cuid())
+  areaId      String             @map("area_id")
+  code        String
+  description String?
+  scopeStatus CriteriaScopeStatus @default(IN_SCOPE) @map("scope_status")
+  createdAt   DateTime           @default(now()) @map("created_at")
+  updatedAt   DateTime           @updatedAt @map("updated_at")
+
+  area            FrameworkArea            @relation(fields: [areaId], references: [id], onDelete: Cascade)
+  controlMappings CriteriaControlMapping[]
+  criteriaStatus  CriteriaStatus[]
+
+  @@unique([areaId, code], map: "framework_criteria_area_code_key")
+  @@index([scopeStatus], map: "framework_criteria_scope_status_idx")
+  @@map("framework_criteria")
+}
+
+model GrcControl {
+  id        String   @id @default(cuid())
+  name      String
+  domain    String?
+  owner     String?
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  criteriaMappings CriteriaControlMapping[]
+  checkMappings    ControlCheckMapping[]
+  controlStatus    ControlStatus[]
+
+  @@index([name], map: "controls_name_idx")
+  @@map("controls")
+}
+
+model CriteriaControlMapping {
+  id         String   @id @default(cuid())
+  criteriaId String   @map("criteria_id")
+  controlId  String   @map("control_id")
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @updatedAt @map("updated_at")
+
+  criteria FrameworkCriteria @relation(fields: [criteriaId], references: [id], onDelete: Cascade)
+  control  GrcControl        @relation(fields: [controlId], references: [id], onDelete: Cascade)
+
+  @@unique([criteriaId, controlId], map: "criteria_control_mappings_criteria_control_key")
+  @@index([criteriaId], map: "criteria_control_mappings_criteria_id_idx")
+  @@index([controlId], map: "criteria_control_mappings_control_id_idx")
+  @@map("criteria_control_mappings")
+}
+
+model ControlCheckMapping {
+  id        String   @id @default(cuid())
+  controlId String   @map("control_id")
+  checkId   String   @map("check_id")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  control GrcControl @relation(fields: [controlId], references: [id], onDelete: Cascade)
+
+  @@unique([controlId, checkId], map: "control_check_mappings_control_check_key")
+  @@index([controlId], map: "control_check_mappings_control_id_idx")
+  @@index([checkId], map: "control_check_mappings_check_id_idx")
+  @@map("control_check_mappings")
+}
+
+model ControlStatus {
+  id               String                @id @default(cuid())
+  controlId        String                @map("control_id")
+  scanId           String                @map("scan_id")
+  readinessPercent Int                   @map("readiness_percent")
+  status           ControlReadinessStatus
+  createdAt        DateTime              @default(now()) @map("created_at")
+  updatedAt        DateTime              @updatedAt @map("updated_at")
+
+  control GrcControl @relation(fields: [controlId], references: [id], onDelete: Cascade)
+
+  @@unique([controlId, scanId], map: "control_status_control_scan_key")
+  @@index([scanId], map: "control_status_scan_id_idx")
+  @@index([status], map: "control_status_status_idx")
+  @@map("control_status")
+}
+
+model CriteriaStatus {
+  id               String   @id @default(cuid())
+  criteriaId       String   @map("criteria_id")
+  scanId           String   @map("scan_id")
+  readinessPercent Int      @map("readiness_percent")
+  readyControls    Int      @map("ready_controls")
+  totalControls    Int      @map("total_controls")
+  createdAt        DateTime @default(now()) @map("created_at")
+  updatedAt        DateTime @updatedAt @map("updated_at")
+
+  criteria FrameworkCriteria @relation(fields: [criteriaId], references: [id], onDelete: Cascade)
+
+  @@unique([criteriaId, scanId], map: "criteria_status_criteria_scan_key")
+  @@index([scanId], map: "criteria_status_scan_id_idx")
+  @@map("criteria_status")
+}
+
+model FrameworkStatus {
+  id                        String   @id @default(cuid())
+  frameworkId               String   @map("framework_id")
+  scanId                    String   @map("scan_id")
+  readinessPercent          Int      @map("framework_readiness_percent")
+  readyCriteria             Int      @map("ready_criteria")
+  totalCriteria             Int      @map("total_criteria")
+  totalControls             Int      @map("total_controls")
+  totalAutomatedChecks      Int      @map("total_automated_checks")
+  inScopeCriteria           Int      @map("in_scope_criteria")
+  outOfScopeCriteria        Int      @map("out_of_scope_criteria")
+  createdAt                 DateTime @default(now()) @map("created_at")
+  updatedAt                 DateTime @updatedAt @map("updated_at")
+
+  framework FrameworkCatalog @relation(fields: [frameworkId], references: [id], onDelete: Cascade)
+
+  @@unique([frameworkId, scanId], map: "framework_status_framework_scan_key")
+  @@index([scanId], map: "framework_status_scan_id_idx")
+  @@map("framework_status")
 }
 

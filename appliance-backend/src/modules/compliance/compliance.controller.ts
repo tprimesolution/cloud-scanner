@@ -1,9 +1,13 @@
 import { Controller, Get, Param, Query } from "@nestjs/common";
 import { ComplianceService } from "./compliance.service";
+import { ComplianceCoverageService } from "./compliance-coverage.service";
 
 @Controller("compliance")
 export class ComplianceController {
-  constructor(private readonly compliance: ComplianceService) {}
+  constructor(
+    private readonly compliance: ComplianceService,
+    private readonly coverage: ComplianceCoverageService
+  ) {}
 
   @Get("frameworks")
   getFrameworks() {
@@ -39,5 +43,11 @@ export class ComplianceController {
       limit ? parseInt(limit, 10) : 20,
       offset ? parseInt(offset, 10) : 0
     );
+  }
+
+  @Get("coverage/:scanId")
+  async getCoverage(@Param("scanId") scanId: string) {
+    const coverage = await this.coverage.getCoverage(scanId);
+    return { scanId, coverage };
   }
 }

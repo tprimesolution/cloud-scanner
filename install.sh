@@ -13,6 +13,32 @@ log() { echo -e "${GREEN}[*]${NC} $1"; }
 warn() { echo -e "${YELLOW}[!]${NC} $1"; }
 err() { echo -e "${RED}[x]${NC} $1"; exit 1; }
 
+FORCE_REBUILD=0
+STATUS_ONLY=0
+
+parse_args() {
+  while [ "$#" -gt 0 ]; do
+    case "$1" in
+      --rebuild)
+        FORCE_REBUILD=1
+        ;;
+      --status)
+        STATUS_ONLY=1
+        ;;
+      -h|--help)
+        echo "Usage: ./install.sh [--rebuild] [--status]"
+        echo "  --rebuild   Force image rebuild even if inputs are unchanged."
+        echo "  --status    Show whether a rebuild is needed, then exit."
+        exit 0
+        ;;
+      *)
+        err "Unknown argument: $1"
+        ;;
+    esac
+    shift
+  done
+}
+
 # Detect OS
 detect_os() {
   if [ -f /etc/os-release ]; then
@@ -65,6 +91,8 @@ install_docker_al2() {
 
 # Main install
 main() {
+  parse_args "$@"
+
   log "Nimbus Guard - Single-click installer"
   log "Target: Amazon Linux (2023 or 2)"
 
@@ -99,7 +127,9 @@ main() {
   fi
 
   log "Project root: $PROJECT_ROOT"
-  log "Starting services ($COMPOSE_FILE - this may take a few minutes on first run)..."
+  if [ "$STATUS_ONLY" != "1" ]; then
+    log "Starting services ($COMPOSE_FILE - this may take a few minutes on first run)..."
+  fi
 
   cd "$DEPLOY_DIR"
 
@@ -110,6 +140,60 @@ main() {
     DOCKER_COMPOSE="docker compose"
   fi
 
+  # Enable modern BuildKit caching and parallel builds.
+  export DOCKER_BUILDKIT=1
+  export COMPOSE_DOCKER_CLI_BUILD=1
+  export BUILDKIT_PROGRESS=auto
+
+  STATE_FILE="$DEPLOY_DIR/.build-state.sha256"
+  BUILD_INPUTS=(
+    "deploy/docker-compose.yml"
+    "appliance-backend/Dockerfile"
+    "appliance-backend/package.json"
+    "appliance-backend/package-lock.json"
+    "appliance-backend/prisma"
+    "appliance-backend/src"
+    "appliance-backend/scanner-engine/prowler-engine/Dockerfile"
+    "appliance-backend/scanner-engine/prowler-engine/requirements.txt"
+    "appliance-backend/scanner-engine/prowler-engine/prowler_engine"
+    "frontend/Dockerfile"
+    "frontend/package.json"
+    "frontend/package-lock.json"
+    "frontend/next.config.js"
+    "frontend/app"
+    "frontend/components"
+    "frontend/services"
+  )
+
+  cd "$PROJECT_ROOT"
+  if command -v sha256sum >/dev/null 2>&1; then
+    CURRENT_HASH="$(tar -cf - "${BUILD_INPUTS[@]}" 2>/dev/null | sha256sum | awk '{print $1}')"
+  else
+    CURRENT_HASH="$(tar -cf - "${BUILD_INPUTS[@]}" 2>/dev/null | shasum -a 256 | awk '{print $1}')"
+  fi
+  PREVIOUS_HASH=""
+  [ -f "$STATE_FILE" ] && PREVIOUS_HASH="$(cat "$STATE_FILE")"
+
+  NEED_BUILD=0
+  if [ "$FORCE_REBUILD" = "1" ]; then
+    NEED_BUILD=1
+    log "Forced rebuild requested."
+  elif [ ! -f "$STATE_FILE" ] || [ "$CURRENT_HASH" != "$PREVIOUS_HASH" ]; then
+    NEED_BUILD=1
+    log "Build inputs changed. Rebuilding images."
+  else
+    log "Build inputs unchanged. Reusing existing images."
+  fi
+
+  if [ "$STATUS_ONLY" = "1" ]; then
+    if [ "$NEED_BUILD" = "1" ]; then
+      echo "status: rebuild_required"
+    else
+      echo "status: up_to_date"
+    fi
+    exit 0
+  fi
+
   # Ensure docker is running (may need newgrp for group)
   if ! docker info &>/dev/null; then
     warn "Docker may require a new session. Run: sudo usermod -aG docker $USER && newgrp docker"
@@ -117,11 +201,19 @@ main() {
     exit 1
   fi
 
-  # Use legacy builder if buildx is too old (common on Amazon Linux)
-  export DOCKER_BUILDKIT=0
-  export COMPOSE_DOCKER_CLI_BUILD=0
-  if ! $DOCKER_COMPOSE -f "$COMPOSE_FILE" up -d --build 2>/dev/null; then
-    err "Build failed. Ensure Docker and Docker Compose are installed and try again."
+  cd "$DEPLOY_DIR"
+  if [ "$NEED_BUILD" = "1" ]; then
+    if ! $DOCKER_COMPOSE -f "$COMPOSE_FILE" build --parallel; then
+      err "Parallel build failed. Ensure Docker BuildKit/buildx is available."
+    fi
+    if ! $DOCKER_COMPOSE -f "$COMPOSE_FILE" up -d --build; then
+      err "Compose up --build failed. Ensure Docker and Docker Compose are installed and try again."
+    fi
+    echo "$CURRENT_HASH" > "$STATE_FILE"
+  else
+    if ! $DOCKER_COMPOSE -f "$COMPOSE_FILE" up -d; then
+      err "Compose up failed. Try rerunning with --rebuild."
+    fi
   fi
 
   log "Done!"

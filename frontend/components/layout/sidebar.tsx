@@ -22,6 +22,8 @@ const navItems = [
   { label: "Findings", href: "/findings", icon: Bug },
   { label: "Assets", href: "/assets", icon: Server },
   { label: "Compliance", href: "/compliance", icon: ShieldCheck },
+  { label: "Frameworks", href: "/frameworks", icon: ShieldCheck },
+  { label: "Controls", href: "/controls", icon: ShieldCheck },
   { label: "Risks", href: "/risks", icon: AlertTriangle },
   { label: "Policies", href: "/policies", icon: ScrollText },
   { label: "Monitoring", href: "/monitoring", icon: Activity },

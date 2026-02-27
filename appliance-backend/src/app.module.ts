@@ -15,6 +15,7 @@ import { CloudSploitModule } from "./modules/scanner-engine/cloudsploit/cloudspl
 import { DashboardModule } from "./modules/dashboard/dashboard.module";
 import { RulesModule } from "./modules/rules/rules.module";
 import { SchedulerModule } from "./modules/scheduler/scheduler.module";
+import { FrameworkCoverageModule } from "./modules/frameworks/framework-coverage.module";
 import { HealthController } from "./health.controller";
 import { PrismaService } from "./shared/prisma.service";
 
@@ -39,6 +40,7 @@ import { PrismaService } from "./shared/prisma.service";
     DashboardModule,
     RulesModule,
     SchedulerModule,
+    FrameworkCoverageModule,
   ],
   controllers: [HealthController],
   providers: [PrismaService],

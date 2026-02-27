@@ -28,17 +28,29 @@ export class DashboardService {
     const frameworks = ["CIS", "SOC2", "HIPAA", "ISO27001", "PCIDSS"].length;
     const frameworkCoverage = totalRules > 0 ? Math.min(100, Math.round((totalRules / (frameworks * 5)) * 100)) : 0;
 
+    const latestCoverage = await this.getLatestCoverageSummary();
+
     return {
       totalAssets: assetCount,
       activeViolations: findingCount,
       criticalRisks: criticalCount,
       frameworkCoverage: `${frameworkCoverage}%`,
+      complianceCoverage: latestCoverage
+        ? {
+            compliancePercent: latestCoverage.compliancePercent,
+            coveragePercent: latestCoverage.coveragePercent,
+            passed: latestCoverage.passed,
+            failed: latestCoverage.failed,
+            notEvaluated: latestCoverage.notEvaluated,
+            notApplicable: latestCoverage.notApplicable,
+          }
+        : null,
       cloudsploitExecution: this.cloudsploitScanService.getExecutionMetrics(),
     };
   }
 
   async getComplianceScore() {
-    const [totalFindings, totalResources] = await Promise.all([
+    const [, totalResources] = await Promise.all([
       this.prisma.finding.count({ where: { status: "open" } }),
       this.prisma.collectedResource.count(),
     ]);
@@ -49,8 +61,22 @@ export class DashboardService {
       select: { resourceCount: true, findingCount: true, completedAt: true },
     });
 
+    const latestCoverage = await this.getLatestCoverageSummary();
+    if (latestCoverage) {
+      return {
+        score: latestCoverage.compliancePercent,
+        coveragePercent: latestCoverage.coveragePercent,
+        passed: latestCoverage.passed,
+        failed: latestCoverage.failed,
+        notEvaluated: latestCoverage.notEvaluated,
+        notApplicable: latestCoverage.notApplicable,
+        lastEvaluated: latestCoverage.lastEvaluated,
+        resourceCount: totalResources,
+      };
+    }
+
     if (!lastJob || lastJob.resourceCount === 0) {
-      return { score: 100, lastEvaluated: null, resourceCount: 0 };
+      return { score: 100, coveragePercent: 0, lastEvaluated: null, resourceCount: 0 };
     }
 
     const passed = lastJob.resourceCount - lastJob.findingCount;
@@ -58,6 +84,7 @@ export class DashboardService {
 
     return {
       score: Math.max(0, Math.min(100, score)),
+      coveragePercent: 0,
       lastEvaluated: lastJob.completedAt,
       resourceCount: lastJob.resourceCount,
     };
@@ -91,27 +118,34 @@ export class DashboardService {
   }
 
   async getFrameworkScores() {
-    const findings = await this.prisma.finding.findMany({
-      where: { status: "open" },
-      select: { controlIds: true },
+    const latestScan = await this.prisma.frameworkStatus.findFirst({
+      orderBy: { createdAt: "desc" },
+      select: { scanId: true },
     });
-
-    const failed: Record<string, number> = { CIS: 0, SOC2: 0, ISO27001: 0 };
-
-    for (const f of findings) {
-      for (const cid of f.controlIds) {
-        const framework = cid.split("-")[0];
-        if (failed[framework] !== undefined) failed[framework]++;
-      }
+    if (!latestScan) {
+      return [
+        { name: "CIS", score: 0, coveragePercent: 0, passed: 0, failed: 0, notEvaluated: 0, notApplicable: 0 },
+      ];
     }
 
-    const base = 100;
-    const penalty = 4;
-    return [
-      { name: "CIS AWS", score: Math.max(0, base - failed.CIS * penalty) },
-      { name: "ISO 27001", score: Math.max(0, base - failed.ISO27001 * penalty) },
-      { name: "SOC 2", score: Math.max(0, base - failed.SOC2 * penalty) },
-    ];
+    const rows = await this.prisma.frameworkStatus.findMany({
+      where: { scanId: latestScan.scanId },
+      include: { framework: { select: { name: true } } },
+    });
+    return rows.map((row) => ({
+      name: row.framework.name,
+      score: row.readinessPercent,
+      coveragePercent:
+        row.inScopeCriteria + row.outOfScopeCriteria > 0
+          ? Math.round(
+              (row.inScopeCriteria / (row.inScopeCriteria + row.outOfScopeCriteria)) * 100
+            )
+          : 0,
+      passed: row.readyCriteria,
+      failed: Math.max(0, row.totalCriteria - row.readyCriteria),
+      notEvaluated: 0,
+      notApplicable: row.outOfScopeCriteria,
+    }));
   }
 
   async getRiskTrend() {
@@ -131,5 +165,50 @@ export class DashboardService {
         date: j.completedAt,
       };
     });
+  }
+
+  private async getLatestCoverageSummary(): Promise<{
+    compliancePercent: number;
+    coveragePercent: number;
+    passed: number;
+    failed: number;
+    notEvaluated: number;
+    notApplicable: number;
+    lastEvaluated: Date;
+  } | null> {
+    const latest = await this.prisma.frameworkStatus.findFirst({
+      orderBy: { createdAt: "desc" },
+      select: { scanId: true, createdAt: true },
+    });
+    if (!latest) return null;
+
+    const [rows, controls] = await Promise.all([
+      this.prisma.frameworkStatus.findMany({
+        where: { scanId: latest.scanId },
+        select: { readyCriteria: true, totalCriteria: true, outOfScopeCriteria: true },
+      }),
+      this.prisma.controlStatus.findMany({
+        where: { scanId: latest.scanId },
+        select: { readinessPercent: true },
+      }),
+    ]);
+    const notApplicable = rows.reduce((sum, row) => sum + row.outOfScopeCriteria, 0);
+    const passed = controls.filter((c) => c.readinessPercent === 100).length;
+    const failed = controls.filter((c) => c.readinessPercent === 0).length;
+    const notEvaluated = controls.length - passed - failed;
+    const applicable = passed + failed;
+    const coverageDenominator = controls.length + notApplicable;
+    return {
+      compliancePercent: applicable > 0 ? Math.round((passed / applicable) * 100) : 0,
+      coveragePercent:
+        coverageDenominator > 0
+          ? Math.round((applicable / coverageDenominator) * 100)
+          : 0,
+      passed,
+      failed,
+      notEvaluated,
+      notApplicable,
+      lastEvaluated: latest.createdAt,
+    };
   }
 }

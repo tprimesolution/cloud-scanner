@@ -29,6 +29,14 @@ type Props = {
     activeViolations: number;
     criticalRisks: number;
     frameworkCoverage: string;
+    complianceCoverage?: {
+      compliancePercent: number;
+      coveragePercent: number;
+      passed: number;
+      failed: number;
+      notEvaluated: number;
+      notApplicable: number;
+    } | null;
   } | null;
   loading?: boolean;
 };
@@ -58,8 +66,12 @@ export function SummaryMetrics({ metrics, loading }: Props) {
     },
     {
       label: "Framework Coverage",
-      value: loading ? "—" : metrics?.frameworkCoverage ?? "0%",
-      delta: "CIS, ISO, SOC2",
+      value: loading
+        ? "—"
+        : `${metrics?.complianceCoverage?.coveragePercent ?? 0}%`,
+      delta: loading
+        ? undefined
+        : `P:${metrics?.complianceCoverage?.passed ?? 0} F:${metrics?.complianceCoverage?.failed ?? 0} NE:${metrics?.complianceCoverage?.notEvaluated ?? 0} NA:${metrics?.complianceCoverage?.notApplicable ?? 0}`,
       icon: CheckCircle2,
       tone: "positive",
     },

@@ -8,12 +8,19 @@ import { Pie, PieChart, ResponsiveContainer } from "recharts";
 
 type Props = {
   score: number;
+  coveragePercent?: number;
   loading?: boolean;
   lastEvaluated?: string | null;
   resourceCount?: number;
 };
 
-export function ComplianceScoreCard({ score, loading, lastEvaluated, resourceCount }: Props) {
+export function ComplianceScoreCard({
+  score,
+  coveragePercent,
+  loading,
+  lastEvaluated,
+  resourceCount,
+}: Props) {
   const clamped = Math.max(0, Math.min(score, 100));
   const data = [
     { name: "Compliant", value: clamped },
@@ -77,6 +84,10 @@ export function ComplianceScoreCard({ score, loading, lastEvaluated, resourceCou
               </div>
               <p className="text-xs text-slate-400">
                 Benchmarked against CIS AWS, ISO 27001, and SOC 2 controls.
+              </p>
+              <p className="text-[11px] text-slate-500">
+                Control coverage{" "}
+                <span className="text-slate-300">{coveragePercent ?? 0}%</span>
               </p>
               <p className="text-[11px] text-slate-500">
                 Last evaluated{" "}

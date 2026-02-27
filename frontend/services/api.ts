@@ -68,6 +68,14 @@ export async function getDashboardMetrics() {
     activeViolations: number;
     criticalRisks: number;
     frameworkCoverage: string;
+    complianceCoverage?: {
+      compliancePercent: number;
+      coveragePercent: number;
+      passed: number;
+      failed: number;
+      notEvaluated: number;
+      notApplicable: number;
+    } | null;
   }>("/dashboard/metrics");
   return data;
 }
@@ -75,6 +83,11 @@ export async function getDashboardMetrics() {
 export async function getComplianceScore() {
   const { data } = await api.get<{
     score: number;
+    coveragePercent?: number;
+    passed?: number;
+    failed?: number;
+    notEvaluated?: number;
+    notApplicable?: number;
     lastEvaluated: string | null;
     resourceCount: number;
   }>("/dashboard/compliance-score");
@@ -89,7 +102,17 @@ export async function getFindingsBySeverity() {
 }
 
 export async function getFrameworkScores() {
-  const { data } = await api.get<{ name: string; score: number }[]>(
+  const { data } = await api.get<
+    {
+      name: string;
+      score: number;
+      coveragePercent?: number;
+      passed?: number;
+      failed?: number;
+      notEvaluated?: number;
+      notApplicable?: number;
+    }[]
+  >(
     "/dashboard/framework-scores"
   );
   return data;
@@ -148,6 +171,90 @@ export interface Category {
   name: string;
   description: string;
   findingCount: number;
+}
+
+// --- Enterprise Framework Coverage ---
+export interface EnterpriseFramework {
+  id: string;
+  name: string;
+  version?: string | null;
+  category?: string | null;
+  region?: string | null;
+  framework_readiness_percent: number;
+  criteria_in_scope: number;
+  criteria_out_of_scope: number;
+  controls_setup_count: number;
+  automated_checks_count: number;
+}
+
+export interface FrameworkSummary {
+  framework_id: string;
+  framework_name: string;
+  areas: number;
+  criteria: number;
+  controls: number;
+  automated_checks: number;
+  framework_readiness_percent: number;
+  scan_id: string | null;
+}
+
+export interface FrameworkCriteriaItem {
+  criteria_id: string;
+  criteria_code: string;
+  description?: string | null;
+  scope: "IN_SCOPE" | "OUT_OF_SCOPE";
+  mapped_controls: number;
+  automated_checks: number;
+  readiness_percent: number;
+  ready_controls: number;
+  total_controls: number;
+}
+
+export interface CriteriaControlItem {
+  control_id: string;
+  name: string;
+  domain?: string | null;
+  owner?: string | null;
+  automated_checks: number;
+  readiness_percent: number;
+  status: "READY" | "PARTIAL" | "NOT_READY";
+}
+
+export async function getEnterpriseFrameworks() {
+  const { data } = await api.get<EnterpriseFramework[]>("/frameworks");
+  return data;
+}
+
+export async function getFrameworkSummary(frameworkId: string) {
+  const { data } = await api.get<FrameworkSummary>(`/frameworks/${frameworkId}/summary`);
+  return data;
+}
+
+export async function getFrameworkCriteria(frameworkId: string) {
+  const { data } = await api.get<FrameworkCriteriaItem[]>(`/frameworks/${frameworkId}/criteria`);
+  return data;
+}
+
+export async function updateCriteriaScope(criteriaId: string, scope: "IN_SCOPE" | "OUT_OF_SCOPE") {
+  const { data } = await api.post<{ id: string; code: string; scopeStatus: "IN_SCOPE" | "OUT_OF_SCOPE" }>(
+    `/criteria/${criteriaId}/scope`,
+    { scope }
+  );
+  return data;
+}
+
+export async function getCriteriaControls(criteriaId: string) {
+  const { data } = await api.get<CriteriaControlItem[]>(`/criteria/${criteriaId}/controls`);
+  return data;
+}
+
+export async function getControlChecks(controlId: string) {
+  const { data } = await api.get<{
+    control_id: string;
+    scan_id: string | null;
+    checks: { check_id: string; status: "PASS" | "FAIL" | "INFO" | "NOT_EVALUATED" }[];
+  }>(`/controls/${controlId}/checks`);
+  return data;
 }
 
 export async function getCategories() {

@@ -3,6 +3,8 @@ services:
     build:
       context: ../appliance-backend/scanner-engine/prowler-engine
       dockerfile: Dockerfile
+      args:
+        PROWLER_REF: ${PROWLER_REF:-master}
     ports:
       - "8001:8001"
     environment:
@@ -32,6 +34,9 @@ services:
     build:
       context: ../appliance-backend
       dockerfile: Dockerfile
+      args:
+        PROWLER_REF: ${PROWLER_REF:-master}
+        CLOUDSPLOIT_REF: ${CLOUDSPLOIT_REF:-master}
     ports:
       - "8080:8080"
     environment:

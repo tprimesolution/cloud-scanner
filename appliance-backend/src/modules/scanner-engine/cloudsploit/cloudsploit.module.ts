@@ -1,5 +1,6 @@
 import { Module } from "@nestjs/common";
 import { PrismaService } from "../../../shared/prisma.service";
+import { ComplianceModule } from "../../compliance/compliance.module";
 import { CloudSploitRuleLoaderService } from "./loaders/rule-loader.service";
 import { CloudSploitExecutorService } from "./executor/cloudsploit-executor.service";
 import { CloudSploitQueueService } from "./executor/cloudsploit-queue.service";
@@ -10,6 +11,7 @@ import { CloudSploitScanService } from "./services/cloudsploit-scan.service";
 import { CloudSploitScanController } from "./cloudsploit-scan.controller";
 
 @Module({
+  imports: [ComplianceModule],
   controllers: [CloudSploitScanController],
   providers: [
     PrismaService,

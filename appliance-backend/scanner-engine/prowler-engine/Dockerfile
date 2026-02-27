@@ -1,27 +1,30 @@
+# syntax=docker/dockerfile:1.7
 # Prowler engine - runs Prowler rules via direct Python import (no CLI)
-FROM python:3.12-slim
 
+FROM alpine/git:2.47.2 AS prowler-src
+ARG PROWLER_REF=master
+RUN git clone --depth 1 --branch "${PROWLER_REF}" https://github.com/prowler-cloud/prowler.git /app/prowler-core
+
+FROM python:3.12-slim AS runtime
 WORKDIR /app
 
-# Install build deps for Prowler (lz4, etc.)
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    git build-essential \
+    build-essential \
     && rm -rf /var/lib/apt/lists/*
 
-# Clone Prowler into prowler-core
-ENV PROWLER_CORE=/app/prowler-core
-RUN git clone --depth 1 https://github.com/prowler-cloud/prowler.git /app/prowler-core \
-    && pip install --no-cache-dir -e /app/prowler-core
-
-# Install prowler-engine
 COPY requirements.txt ./
-RUN pip install --no-cache-dir -r requirements.txt
+RUN --mount=type=cache,target=/root/.cache/pip \
+    pip install -r requirements.txt
+
+COPY --from=prowler-src /app/prowler-core /app/prowler-core
+RUN --mount=type=cache,target=/root/.cache/pip \
+    pip install -e /app/prowler-core && \
+    apt-get purge -y build-essential && \
+    apt-get autoremove -y && \
+    rm -rf /var/lib/apt/lists/*
+
 COPY prowler_engine ./prowler_engine
 
-# Remove build deps
-RUN apt-get purge -y git build-essential && apt-get autoremove -y
-
 EXPOSE 8001
-
 ENV PROWLER_CORE=/app/prowler-core
 CMD ["python", "-m", "uvicorn", "prowler_engine.server:app", "--host", "0.0.0.0", "--port", "8001"]

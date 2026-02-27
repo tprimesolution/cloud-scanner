@@ -7,6 +7,7 @@ import { CloudSploitResultNormalizerService } from "../normalizers/result-normal
 import type { CloudSploitScanInput } from "../interfaces/cloudsploit-scan.interface";
 import { CloudSploitQueueService } from "../executor/cloudsploit-queue.service";
 import { CloudSploitMetricsService } from "../executor/cloudsploit-metrics.service";
+import { ComplianceCoverageService } from "../../../compliance/compliance-coverage.service";
 
 @Injectable()
 export class CloudSploitScanService {
@@ -20,6 +21,7 @@ export class CloudSploitScanService {
     private readonly normalizer: CloudSploitResultNormalizerService,
     private readonly queue: CloudSploitQueueService,
     private readonly metrics: CloudSploitMetricsService,
+    private readonly complianceCoverage: ComplianceCoverageService,
   ) {}
 
   /** Start a scan (async, returns scan ID immediately). */
@@ -161,6 +163,20 @@ export class CloudSploitScanService {
         where: { id: scanId },
         data: { status: "completed", completedAt: new Date(), resultCount: count },
       });
+      // Async post-processing: compute compliance control coverage without blocking scan completion.
+      void this.complianceCoverage
+        .calculateAndPersistCoverage(scanId, { provider: input.provider })
+        .catch((error) => {
+          const msg = error instanceof Error ? error.message : String(error);
+          this.logger.error(
+            JSON.stringify({
+              event: "compliance_coverage_calculation_failed",
+              scanId,
+              provider: input.provider,
+              error: msg,
+            })
+          );
+        });
       this.logger.log(
         JSON.stringify({
           event: "cloudsploit_run_scan_complete",

@@ -26,9 +26,18 @@ export function DashboardClient() {
     activeViolations: number;
     criticalRisks: number;
     frameworkCoverage: string;
+    complianceCoverage?: {
+      compliancePercent: number;
+      coveragePercent: number;
+      passed: number;
+      failed: number;
+      notEvaluated: number;
+      notApplicable: number;
+    } | null;
   } | null>(null);
   const [compliance, setCompliance] = useState<{
     score: number;
+    coveragePercent?: number;
     lastEvaluated: string | null;
     resourceCount: number;
   } | null>(null);
@@ -111,6 +120,7 @@ export function DashboardClient() {
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1.4fr)_minmax(0,1.2fr)]">
         <ComplianceScoreCard
           score={compliance?.score ?? 100}
+          coveragePercent={compliance?.coveragePercent ?? metrics?.complianceCoverage?.coveragePercent ?? 0}
           loading={loading}
           lastEvaluated={compliance?.lastEvaluated}
           resourceCount={compliance?.resourceCount ?? 0}
