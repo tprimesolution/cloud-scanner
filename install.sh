@@ -241,8 +241,15 @@ main() {
         unset DOCKER_BUILDKIT COMPOSE_DOCKER_CLI_BUILD BUILDKIT_PROGRESS
       fi
     fi
-    if ! $DOCKER_COMPOSE -f "$COMPOSE_FILE" up -d --build; then
-      err "Compose up --build failed. Ensure Docker and Docker Compose are installed and try again."
+
+    if [ "$USE_BUILDKIT" = "0" ]; then
+      if ! $DOCKER_COMPOSE -f "$COMPOSE_FILE" build; then
+        err "Compose build failed in classic mode. Ensure Docker and Docker Compose are installed and try again."
+      fi
+    fi
+
+    if ! $DOCKER_COMPOSE -f "$COMPOSE_FILE" up -d; then
+      err "Compose up failed after build. Ensure Docker and Docker Compose are installed and try again."
     fi
     echo "$CURRENT_HASH" > "$STATE_FILE"
   else
