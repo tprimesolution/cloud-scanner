@@ -34,6 +34,48 @@ detect_buildx_version() {
   }'
 }
 
+install_or_upgrade_buildx() {
+  REQUIRED_BUILDX_VERSION="0.17.0"
+  TARGET_BUILDX_VERSION="0.17.1"
+  CURRENT_BUILDX_VERSION="$(detect_buildx_version || true)"
+
+  if buildx_version_ge "$REQUIRED_BUILDX_VERSION" "$CURRENT_BUILDX_VERSION"; then
+    log "Docker buildx v$CURRENT_BUILDX_VERSION is compatible."
+    return
+  fi
+
+  warn "Docker buildx v${REQUIRED_BUILDX_VERSION}+ is required (detected: ${CURRENT_BUILDX_VERSION:-none})."
+  log "Installing Docker buildx v$TARGET_BUILDX_VERSION..."
+
+  ARCH="$(uname -m)"
+  case "$ARCH" in
+    x86_64) BUILDX_ARCH="amd64" ;;
+    aarch64|arm64) BUILDX_ARCH="arm64" ;;
+    *)
+      warn "Unsupported architecture for automatic buildx install: $ARCH"
+      warn "Proceeding without buildx upgrade."
+      return
+      ;;
+  esac
+
+  BUILDX_URL="https://github.com/docker/buildx/releases/download/v${TARGET_BUILDX_VERSION}/buildx-v${TARGET_BUILDX_VERSION}.linux-${BUILDX_ARCH}"
+  BUILDX_PLUGIN_DIR="/usr/libexec/docker/cli-plugins"
+  BUILDX_PLUGIN_PATH="${BUILDX_PLUGIN_DIR}/docker-buildx"
+
+  sudo mkdir -p "$BUILDX_PLUGIN_DIR"
+  sudo curl -fsSL "$BUILDX_URL" -o "$BUILDX_PLUGIN_PATH"
+  sudo chmod +x "$BUILDX_PLUGIN_PATH"
+  sudo systemctl restart docker
+
+  UPDATED_BUILDX_VERSION="$(detect_buildx_version || true)"
+  if buildx_version_ge "$REQUIRED_BUILDX_VERSION" "$UPDATED_BUILDX_VERSION"; then
+    log "Docker buildx upgraded to v$UPDATED_BUILDX_VERSION."
+  else
+    warn "buildx upgrade verification failed (detected: ${UPDATED_BUILDX_VERSION:-none})."
+    warn "The installer will continue in classic compose mode."
+  fi
+}
+
 FORCE_REBUILD=0
 STATUS_ONLY=0
 
@@ -135,6 +177,7 @@ main() {
   esac
 
   install_docker_compose
+  install_or_upgrade_buildx
   fi
 
   # Resolve project root (directory containing install.sh)

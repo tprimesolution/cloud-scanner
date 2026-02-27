@@ -4,6 +4,29 @@ const api = axios.create({
   baseURL: process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8080/api",
 });
 
+const RETRYABLE_STATUS = new Set([502, 503, 504]);
+
+api.interceptors.response.use(
+  (response) => response,
+  async (error) => {
+    const config = error?.config as (typeof error.config & { __retryCount?: number }) | undefined;
+    const status = error?.response?.status as number | undefined;
+    if (!config || !status || !RETRYABLE_STATUS.has(status)) {
+      return Promise.reject(error);
+    }
+
+    const retryCount = config.__retryCount ?? 0;
+    if (retryCount >= 2) {
+      return Promise.reject(error);
+    }
+
+    config.__retryCount = retryCount + 1;
+    const backoffMs = retryCount === 0 ? 300 : 800;
+    await new Promise((resolve) => setTimeout(resolve, backoffMs));
+    return api.request(config);
+  }
+);
+
 // --- Scanner ---
 export async function getScannerStatus() {
   const { data } = await api.get<{

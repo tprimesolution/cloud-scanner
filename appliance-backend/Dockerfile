@@ -30,7 +30,8 @@ RUN git clone --depth 1 --branch "${CLOUDSPLOIT_REF}" https://github.com/aquasec
 WORKDIR /opt/cloudsploit
 RUN --mount=type=cache,target=/root/.npm \
     (npm ci --omit=dev || npm install --omit=dev) && \
-    npm cache clean --force
+    npm cache clean --force && \
+    rm -rf /opt/cloudsploit/.git /opt/cloudsploit/.github /opt/cloudsploit/docs /opt/cloudsploit/test /opt/cloudsploit/tests
 
 FROM node:20-alpine AS runtime
 WORKDIR /app
