@@ -109,7 +109,7 @@ export class DashboardService {
       select: { resourceCount: true, findingCount: true, completedAt: true },
     });
 
-    return jobs.reverse().map((j, i) => {
+    return jobs.reverse().map((j: { resourceCount: number; findingCount: number; completedAt: Date | null }, i: number) => {
       const passed = j.resourceCount - j.findingCount;
       const score = j.resourceCount > 0 ? Math.round((passed / j.resourceCount) * 100) : 100;
       return {

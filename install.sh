@@ -93,12 +93,9 @@ main() {
   PROJECT_ROOT="$(cd "$SCRIPT_DIR" && pwd)"
   DEPLOY_DIR="$PROJECT_ROOT/deploy"
 
-  COMPOSE_FILE="docker-compose.python.yml"
+  COMPOSE_FILE="docker-compose.yml"
   if [ ! -f "$DEPLOY_DIR/$COMPOSE_FILE" ]; then
-    COMPOSE_FILE="docker-compose.yml"
-  fi
-  if [ ! -f "$DEPLOY_DIR/$COMPOSE_FILE" ]; then
-    err "No docker-compose file found at $DEPLOY_DIR. Run this script from the project root."
+    err "No docker-compose.yml found at $DEPLOY_DIR. Run this script from the project root."
   fi
 
   log "Project root: $PROJECT_ROOT"
@@ -123,19 +120,9 @@ main() {
   # Use legacy builder if buildx is too old (common on Amazon Linux)
   export DOCKER_BUILDKIT=0
   export COMPOSE_DOCKER_CLI_BUILD=0
-  USED_LEGACY=false
   if ! $DOCKER_COMPOSE -f "$COMPOSE_FILE" up -d --build 2>/dev/null; then
-    warn "Compose build failed (buildx?). Trying legacy build..."
-    if [ -f "$DEPLOY_DIR/build-legacy.sh" ]; then
-      chmod +x "$DEPLOY_DIR/build-legacy.sh"
-      "$DEPLOY_DIR/build-legacy.sh"
-      USED_LEGACY=true
-    else
-      err "Build failed. Install buildx or run: cd $DEPLOY_DIR && ./build-legacy.sh"
-    fi
+    err "Build failed. Ensure Docker and Docker Compose are installed and try again."
   fi
-
-  [ "$USED_LEGACY" = true ] && COMPOSE_FILE="docker-compose.legacy.yml"
 
   log "Done!"
   echo ""

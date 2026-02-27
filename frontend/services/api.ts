@@ -31,6 +31,8 @@ export async function getScanJob(id: string) {
 export async function getFindings(params?: {
   status?: string;
   severity?: string;
+  framework?: string;
+  category?: string;
   limit?: number;
   offset?: number;
 }) {
@@ -110,6 +112,57 @@ export async function getRules() {
   const { data } = await api.get<
     { id: string; code: string; name: string; description?: string; resourceType: string; severity: string; controlIds: string[] }[]
   >("/rules");
+  return data;
+}
+
+// --- Compliance Frameworks (41) & Categories (17) ---
+export interface Framework {
+  frameworkId: string;
+  name: string;
+  description: string;
+  findingCount: number;
+  score: number;
+  status: string;
+}
+
+export async function getFrameworks() {
+  const { data } = await api.get<Framework[]>("/compliance/frameworks");
+  return data;
+}
+
+export async function getFrameworkFindings(
+  frameworkId: string,
+  params?: { limit?: number; offset?: number }
+) {
+  const { data } = await api.get<{
+    items: Finding[];
+    total: number;
+    frameworkId: string;
+  }>(`/compliance/frameworks/${frameworkId}/findings`, { params });
+  return data;
+}
+
+export interface Category {
+  categoryId: string;
+  name: string;
+  description: string;
+  findingCount: number;
+}
+
+export async function getCategories() {
+  const { data } = await api.get<Category[]>("/compliance/categories");
+  return data;
+}
+
+export async function getCategoryFindings(
+  categoryId: string,
+  params?: { limit?: number; offset?: number }
+) {
+  const { data } = await api.get<{
+    items: Finding[];
+    total: number;
+    categoryId: string;
+  }>(`/compliance/categories/${categoryId}/findings`, { params });
   return data;
 }
 

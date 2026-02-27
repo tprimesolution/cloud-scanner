@@ -1,6 +1,6 @@
 # Nimbus Guard – Cloud Compliance Scanner
 
-Unified security scanning platform for AWS (Prowler/CloudSploit-style). NestJS backend, Next.js frontend.
+Unified security scanning platform for AWS. NestJS backend (appliance-backend), Next.js frontend.
 
 ## Quick Deploy (Amazon Linux EC2)
 
@@ -22,82 +22,64 @@ Unified security scanning platform for AWS (Prowler/CloudSploit-style). NestJS b
 The script installs Docker, Docker Compose, and starts all services. Access the UI at `http://<host>:80`.
 
 ## Project Structure
+
 ```
-/backend
-  /api
-  /scanner
-  /policy_engine
-  /compliance_mapping
-  /recommendation
-  /db
-  /core
-/frontend
-  /components
-  /pages
-  /services
+/appliance-backend   NestJS API (Prisma, port 8080)
+/frontend            Next.js app
+/deploy              Docker Compose, nginx config
 ```
 
 ## Getting Started (Local Development)
 
 ### Prerequisites
+
 - Docker & Docker Compose
 - Node.js 18+ (for frontend)
-
-### Initial Setup
-1. Clone the repository.
-2. Copy `.env.example` to `.env` and adjust settings (DATABASE_URL, SECRET_KEY, etc.).
 
 ### Running Services
 
 ```bash
-# build and start everything
-docker-compose up --build
+cd deploy
+docker compose up -d --build
 ```
 
 This will start:
+
 - PostgreSQL on port 5432
-- Redis on port 6379
-- FastAPI backend on port 8000
-- Celery worker
-- Next.js frontend on port 3000
+- appliance-backend (NestJS) on port 8080
+- Next.js frontend (via nginx)
+- nginx on port 80
 
 ### Database
-The project includes Alembic for schema migrations. After setting `DATABASE_URL` in `.env`, initialize and create the first revision:
 
-```bash
-cd backend
-alembic upgrade head             # applies existing migrations
-alembic revision --autogenerate -m "initial"  # create new migration
-alembic upgrade head
-```
-
-Alternatively, the `db/schema.sql` file can be applied directly during development.
-
-### Scanning
-Use `docker-compose exec backend python -c "from scanner.tasks import run_scan; run_scan.delay('<ROLE_ARN>');"` to trigger a scan against an AWS account with a role.
+The appliance-backend uses Prisma. Migrations are run automatically on startup.
 
 ### Frontend
-Open http://localhost:3000 in your browser.
+
+Open http://localhost (or http://localhost:80) in your browser.
 
 ## Development Notes
-- Backend is built with FastAPI, Celery, SQLAlchemy.
-- Policy rules live in `backend/policy_engine/rules` as YAML.
-- Framework mappings in `backend/compliance_mapping/frameworks.yaml`.
-- Frontend uses Next.js + TailwindCSS with Recharts.
+
+- Backend: NestJS + Prisma + PostgreSQL.
+- Frontend: Next.js + TailwindCSS with Recharts.
+- API base: `http://localhost:8080/api`
+
 ### Sample API usage
+
 ```bash
-# list resources
-curl http://localhost:8000/resources
+# health
+curl http://localhost:8080/api/health/ready
 
 # list findings
-curl http://localhost:8000/findings
+curl http://localhost:8080/api/scanner/findings
 
-# remediate a finding
-curl -X POST http://localhost:8000/findings/1/remediate
+# compliance score
+curl http://localhost:8080/api/dashboard/compliance-score
 ```
+
 ## Next Steps
-1. Implement full CRUD and DB migrations.
-2. Add authentication and RBAC.
-3. Expand scanner to IAM/RDS/SecurityGroups.
-4. Add unit tests for policy engine and API.
-5. Deploy to Kubernetes with CI/CD.
+
+1. Add authentication and RBAC.
+2. Expand scanner coverage.
+3. Add unit tests.
+4. Deploy to Kubernetes with CI/CD.

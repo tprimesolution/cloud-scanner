@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { getFindings, updateFindingStatus, type Finding } from "@/services/api";
@@ -19,6 +20,7 @@ function SeverityPill({ value }: { value: string }) {
 }
 
 export default function FindingsPage() {
+  const searchParams = useSearchParams();
   const [findings, setFindings] = useState<Finding[]>([]);
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -26,6 +28,8 @@ export default function FindingsPage() {
   const [severityFilter, setSeverityFilter] = useState<string>("");
   const [offset, setOffset] = useState(0);
   const limit = 20;
+  const frameworkFromUrl = searchParams?.get("framework") ?? undefined;
+  const categoryFromUrl = searchParams?.get("category") ?? undefined;
 
   const fetchFindings = async () => {
     setLoading(true);
@@ -33,6 +37,8 @@ export default function FindingsPage() {
       const res = await getFindings({
         status: statusFilter || undefined,
         severity: severityFilter || undefined,
+        framework: frameworkFromUrl,
+        category: categoryFromUrl,
         limit,
         offset,
       });
@@ -47,7 +53,7 @@ export default function FindingsPage() {
 
   useEffect(() => {
     fetchFindings();
-  }, [statusFilter, severityFilter, offset]);
+  }, [statusFilter, severityFilter, frameworkFromUrl, categoryFromUrl, offset]);
 
   const handleStatusChange = async (id: string, status: string) => {
     try {
@@ -65,7 +71,9 @@ export default function FindingsPage() {
           Findings
         </h1>
         <p className="text-xs text-slate-400">
-          Security and compliance findings from scans.
+          {frameworkFromUrl || categoryFromUrl
+            ? `Filtered by ${[frameworkFromUrl && `framework: ${frameworkFromUrl}`, categoryFromUrl && `category: ${categoryFromUrl}`].filter(Boolean).join(" & ")}`
+            : "Security and compliance findings from scans."}
         </p>
       </div>
 

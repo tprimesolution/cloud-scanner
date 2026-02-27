@@ -1,4 +1,6 @@
 #!/bin/sh
 set -e
+# Run migrations as root (Prisma needs write access to engines)
 npx prisma migrate deploy
-exec node dist/main.js
+# Drop to app user for the main process
+exec su-exec app node dist/main.js

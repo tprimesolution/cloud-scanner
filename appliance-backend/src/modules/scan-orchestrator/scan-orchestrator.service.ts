@@ -114,10 +114,10 @@ export class ScanOrchestratorService {
     });
 
     let findingCount = 0;
-    const normalized: NormalizedResource[] = resources.map((r) => ({
+    const normalized: NormalizedResource[] = resources.map((r: { resourceId: string; resourceType: string; region: string | null; accountId: string | null; metadata: unknown }) => ({
       id: r.resourceId,
       type: r.resourceType,
-      region: r.region,
+      region: r.region ?? "",
       accountId: r.accountId ?? undefined,
       metadata: (r.metadata as Record<string, unknown>) ?? {},
       fetchedAt: new Date(),

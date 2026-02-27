@@ -34,18 +34,15 @@ echo "[*] Cloning repository..."
 mkdir -p "$(dirname "$INSTALL_DIR")"
 git clone "$REPO_URL" "$INSTALL_DIR" || { echo "[x] Clone failed. Check REPO_URL and network."; exit 1; }
 
-# Deploy (Python stack: FastAPI + Celery + Redis)
+# Deploy (appliance-backend + frontend + nginx)
 echo "[*] Building and starting services..."
 cd "$INSTALL_DIR/deploy"
-COMPOSE_FILE="docker-compose.python.yml"
-[ -f "$COMPOSE_FILE" ] || COMPOSE_FILE="docker-compose.yml"
 export DOCKER_BUILDKIT=0
 export COMPOSE_DOCKER_CLI_BUILD=0
 
-if ! docker-compose -f "$COMPOSE_FILE" up -d --build 2>/dev/null; then
-  echo "[*] Compose build failed (buildx?). Using legacy build..."
-  chmod +x build-legacy.sh
-  ./build-legacy.sh
+if ! docker-compose -f docker-compose.yml up -d --build 2>/dev/null; then
+  echo "[x] Compose build failed. Check Docker and try again."
+  exit 1
 fi
 
 echo "[*] Done. UI at http://$(curl -s http://169.254.169.254/latest/meta-data/public-ipv4):80"

@@ -28,20 +28,29 @@ def list_findings(
     db: Session = Depends(get_db),
     status: str | None = Query(None),
     severity: str | None = Query(None),
+    framework: str | None = Query(None),
+    category: str | None = Query(None),
     limit: int = Query(20, le=100),
     offset: int = Query(0, ge=0),
 ):
     """List findings with filters."""
     where = ["1=1"]
-    params = {"limit": limit, "offset": offset}
+    params: dict = {"limit": limit, "offset": offset}
     if status:
         where.append("f.status = :status")
         params["status"] = status
     if severity:
         where.append("f.severity = :severity")
         params["severity"] = severity
+    if framework:
+        where.append("cr.compliance_mappings::text ILIKE :fw_like")
+        params["fw_like"] = f"%{framework}%"
+    if category:
+        where.append("cr.category ILIKE :cat")
+        params["cat"] = f"%{category}%"
 
     where_clause = " AND ".join(where)
+    total_params = {k: v for k, v in params.items() if k not in ("limit", "offset")}
     rows = db.execute(
         text(f"""
             SELECT f.id, r.resource_id, r.resource_type, cr.rule_id, f.severity,
@@ -57,8 +66,12 @@ def list_findings(
     ).fetchall()
 
     total = db.execute(
-        text(f"SELECT COUNT(*) FROM findings f WHERE {where_clause}"),
-        {k: v for k, v in params.items() if k in ("status", "severity")},
+        text(f"""
+            SELECT COUNT(*) FROM findings f
+            JOIN compliance_rules cr ON f.rule_id = cr.id
+            WHERE {where_clause}
+        """),
+        total_params,
     ).scalar() or 0
 
     items = [
