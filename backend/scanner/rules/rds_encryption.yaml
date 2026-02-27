@@ -1,0 +1,13 @@
+rule_id: rds_encryption
+description: RDS instance storage is not encrypted
+resource_type: rds_instance
+severity: high
+compliance_mappings:
+  cis: ["CIS 4.3"]
+  hipaa: ["HIPAA 164.312"]
+evaluation: |
+  def evaluate(resource):
+      storage = resource.get("raw_metadata", {}).get("StorageEncrypted")
+      if not storage:
+          return False, "RDS storage encryption not enabled"
+      return True, "OK"

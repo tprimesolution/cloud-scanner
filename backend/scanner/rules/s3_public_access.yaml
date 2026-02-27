@@ -1,0 +1,15 @@
+rule_id: s3_public_access
+description: S3 bucket has no public access block configured
+resource_type: s3_bucket
+severity: critical
+compliance_mappings:
+  cis: ["CIS 1.20"]
+  pci: ["PCI 3.4"]
+  hipaa: ["HIPAA 164.312"]
+evaluation: |
+  def evaluate(resource):
+      pab = resource.get("raw_metadata", {}).get("PublicAccessBlock", {})
+      config = pab.get("PublicAccessBlockConfiguration", {})
+      if not config.get("BlockPublicAcls") or not config.get("BlockPublicPolicy"):
+          return False, "Public access block not fully configured"
+      return True, "OK"

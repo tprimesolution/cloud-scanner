@@ -89,23 +89,27 @@ main() {
   PROJECT_ROOT="$(cd "$SCRIPT_DIR" && pwd)"
   DEPLOY_DIR="$PROJECT_ROOT/deploy"
 
-  if [ ! -f "$DEPLOY_DIR/docker-compose.yml" ]; then
-    err "docker-compose.yml not found at $DEPLOY_DIR. Run this script from the project root."
+  COMPOSE_FILE="docker-compose.python.yml"
+  if [ ! -f "$DEPLOY_DIR/$COMPOSE_FILE" ]; then
+    COMPOSE_FILE="docker-compose.yml"
+  fi
+  if [ ! -f "$DEPLOY_DIR/$COMPOSE_FILE" ]; then
+    err "No docker-compose file found at $DEPLOY_DIR. Run this script from the project root."
   fi
 
   log "Project root: $PROJECT_ROOT"
-  log "Starting services (this may take a few minutes on first run)..."
+  log "Starting services ($COMPOSE_FILE - this may take a few minutes on first run)..."
 
   cd "$DEPLOY_DIR"
 
   # Ensure docker is running (may need newgrp for group)
   if ! docker info &>/dev/null; then
     warn "Docker may require a new session. Run: sudo usermod -aG docker $USER && newgrp docker"
-    warn "Then run: cd $DEPLOY_DIR && docker compose up -d --build"
+    warn "Then run: cd $DEPLOY_DIR && docker compose -f $COMPOSE_FILE up -d --build"
     exit 1
   fi
 
-  docker compose up -d --build
+  docker compose -f "$COMPOSE_FILE" up -d --build
 
   log "Done!"
   echo ""
@@ -114,8 +118,8 @@ main() {
   echo "  Access the UI at:  http://${HOST}:80"
   echo ""
   echo "  Commands:"
-  echo "    View logs:  cd $DEPLOY_DIR && docker compose logs -f"
-  echo "    Stop:      cd $DEPLOY_DIR && docker compose down"
+  echo "    View logs:  cd $DEPLOY_DIR && docker compose -f $COMPOSE_FILE logs -f"
+  echo "    Stop:      cd $DEPLOY_DIR && docker compose -f $COMPOSE_FILE down"
   echo ""
 }
 

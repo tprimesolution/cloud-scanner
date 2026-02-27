@@ -1,0 +1,13 @@
+rule_id: s3_encryption
+description: S3 bucket does not have server-side encryption enabled
+resource_type: s3_bucket
+severity: high
+compliance_mappings:
+  cis: ["CIS 1.15"]
+  pci: ["PCI 3.4"]
+evaluation: |
+  def evaluate(resource):
+      enc = resource.get("raw_metadata", {}).get("Encryption", {})
+      if "ServerSideEncryptionConfiguration" not in enc:
+          return False, "Server-side encryption not configured"
+      return True, "OK"

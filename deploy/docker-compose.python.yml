@@ -1,0 +1,86 @@
+# Cloud Compliance Scanner - Python stack (FastAPI + Celery + Redis)
+# Single EC2 deployment. Uses EC2 IAM role - NO AWS keys.
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: compliance
+      POSTGRES_PASSWORD: compliance
+      POSTGRES_DB: compliance_scanner
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U compliance -d compliance_scanner"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 3
+
+  backend:
+    build:
+      context: ../backend
+      dockerfile: Dockerfile
+    environment:
+      DATABASE_URL: postgresql://compliance:compliance@postgres:5432/compliance_scanner
+      REDIS_URL: redis://redis:6379/0
+      AWS_REGION: us-east-1
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  celery-worker:
+    build:
+      context: ../backend
+      dockerfile: Dockerfile
+    command: celery -A celery_app worker -l info
+    environment:
+      DATABASE_URL: postgresql://compliance:compliance@postgres:5432/compliance_scanner
+      REDIS_URL: redis://redis:6379/0
+      AWS_REGION: us-east-1
+    depends_on:
+      - backend
+      - redis
+      - postgres
+
+  celery-beat:
+    build:
+      context: ../backend
+      dockerfile: Dockerfile
+    command: celery -A celery_app beat -l info
+    environment:
+      DATABASE_URL: postgresql://compliance:compliance@postgres:5432/compliance_scanner
+      REDIS_URL: redis://redis:6379/0
+    depends_on:
+      - celery-worker
+
+  frontend:
+    build:
+      context: ../frontend
+      dockerfile: Dockerfile
+      args:
+        NEXT_PUBLIC_API_BASE_URL: /api
+    depends_on:
+      - backend
+
+  nginx:
+    image: nginx:alpine
+    ports:
+      - "80:80"
+    volumes:
+      - ./nginx-python.conf:/etc/nginx/conf.d/default.conf:ro
+    depends_on:
+      - frontend
+      - backend
+
+volumes:
+  pgdata: {}

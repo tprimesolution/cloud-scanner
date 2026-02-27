@@ -1,0 +1,21 @@
+rule_id: sg_public_ingress
+description: Security group allows unrestricted ingress (0.0.0.0/0) on sensitive ports
+resource_type: security_group
+severity: high
+compliance_mappings:
+  cis: ["CIS 4.1", "CIS 4.2"]
+  pci: ["PCI 1.2"]
+evaluation: |
+  def evaluate(resource):
+      perms = resource.get("raw_metadata", {}).get("IpPermissions", [])
+      bad_ports = [22, 3389, 5432, 3306, 1433]
+      for p in perms:
+          from_port = p.get("FromPort") or 0
+          to_port = p.get("ToPort") or 65535
+          for rng in p.get("IpRanges", []) + p.get("Ipv6Ranges", []):
+              cidr = rng.get("CidrIp") or rng.get("CidrIpv6", "")
+              if "0.0.0.0/0" in cidr or "::/0" in cidr:
+                  for port in bad_ports:
+                      if from_port <= port <= to_port:
+                          return False, f"Public access on port {port}"
+      return True, "OK"

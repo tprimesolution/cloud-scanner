@@ -33,9 +33,11 @@ echo "[*] Cloning repository..."
 mkdir -p "$(dirname "$INSTALL_DIR")"
 git clone "$REPO_URL" "$INSTALL_DIR" || { echo "[x] Clone failed. Check REPO_URL and network."; exit 1; }
 
-# Deploy
+# Deploy (Python stack: FastAPI + Celery + Redis)
 echo "[*] Building and starting services..."
 cd "$INSTALL_DIR/deploy"
-docker compose up -d --build
+COMPOSE_FILE="docker-compose.python.yml"
+[ -f "$COMPOSE_FILE" ] || COMPOSE_FILE="docker-compose.yml"
+docker compose -f "$COMPOSE_FILE" up -d --build
 
 echo "[*] Done. UI at http://$(curl -s http://169.254.169.254/latest/meta-data/public-ipv4):80"

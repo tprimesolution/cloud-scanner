@@ -1,0 +1,14 @@
+rule_id: vpc_flow_logs
+description: VPC does not have flow logs enabled
+resource_type: vpc
+severity: medium
+compliance_mappings:
+  cis: ["CIS 4.3"]
+  pci: ["PCI 10.2"]
+evaluation: |
+  def evaluate(resource):
+      logs = resource.get("raw_metadata", {}).get("FlowLogs", [])
+      active = [l for l in logs if l.get("FlowLogStatus") == "ACTIVE"]
+      if not active:
+          return False, "VPC flow logs not enabled"
+      return True, "OK"
