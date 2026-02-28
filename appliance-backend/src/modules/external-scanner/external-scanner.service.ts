@@ -4,10 +4,10 @@ import { CloudSploitRunnerService } from "./cloudsploit-runner.service";
 import { FindingsService } from "../findings/findings.service";
 
 export interface ExternalScannerConfig {
-  enableProwler?: boolean;
-  enableCloudSploit?: boolean;
-  prowlerCompliance?: string;
-  cloudsploitCompliance?: string;
+  enableShield?: boolean;
+  enableGuard?: boolean;
+  shieldCompliance?: string;
+  guardCompliance?: string;
 }
 
 @Injectable()
@@ -19,32 +19,32 @@ export class ExternalScannerService {
   ) {}
 
   async runExternalScans(scanJobId: string, config?: ExternalScannerConfig): Promise<number> {
-    const enableProwler = config?.enableProwler ?? true;
-    const enableCloudSploit = config?.enableCloudSploit ?? true;
+    const enableShield = config?.enableShield ?? true;
+    const enableGuard = config?.enableGuard ?? true;
 
     let count = 0;
 
-    if (enableProwler) {
+    if (enableShield) {
       try {
-        const prowlerFindings = await this.prowler.run(config?.prowlerCompliance);
+        const prowlerFindings = await this.prowler.run(config?.shieldCompliance);
         for (const f of prowlerFindings) {
           await this.findings.upsertFromExternalFinding(f, scanJobId);
           count++;
         }
       } catch (err) {
-        console.error("Prowler scan failed:", err);
+        console.error("Shield scan failed:", err);
       }
     }
 
-    if (enableCloudSploit) {
+    if (enableGuard) {
       try {
-        const cloudsploitFindings = await this.cloudsploit.run(config?.cloudsploitCompliance);
+        const cloudsploitFindings = await this.cloudsploit.run(config?.guardCompliance);
         for (const f of cloudsploitFindings) {
           await this.findings.upsertFromExternalFinding(f, scanJobId);
           count++;
         }
       } catch (err) {
-        console.error("CloudSploit scan failed:", err);
+        console.error("Guard scan failed:", err);
       }
     }
 

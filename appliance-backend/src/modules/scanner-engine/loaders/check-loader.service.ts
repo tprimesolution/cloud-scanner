@@ -29,32 +29,32 @@ const SUPPORTED_PROVIDERS = ["aws", "azure", "gcp", "kubernetes"] as const;
 
 @Injectable()
 export class CheckLoaderService {
-  private prowlerPath: string | null = null;
+  private shieldPath: string | null = null;
 
-  /** Resolve Prowler installation path (no subprocess - env only). */
+  /** Resolve Shield installation path (no subprocess - env only). */
   getProwlerPath(): string | null {
-    if (this.prowlerPath) return this.prowlerPath;
-    const envPath = process.env.PROWLER_PATH;
+    if (this.shieldPath) return this.shieldPath;
+    const envPath = process.env.SHIELD_PATH || process.env.PROWLER_PATH;
     if (envPath && fs.existsSync(envPath)) {
-      this.prowlerPath = envPath;
+      this.shieldPath = envPath;
       return envPath;
     }
-    const corePath = process.env.PROWLER_CORE;
+    const corePath = process.env.SHIELD_CORE || process.env.PROWLER_CORE;
     if (corePath && fs.existsSync(corePath)) {
       const pkgPath = path.join(corePath, "prowler");
       if (fs.existsSync(path.join(pkgPath, "providers"))) {
-        this.prowlerPath = pkgPath;
+        this.shieldPath = pkgPath;
         return pkgPath;
       }
       if (fs.existsSync(path.join(corePath, "providers"))) {
-        this.prowlerPath = corePath;
+        this.shieldPath = corePath;
         return corePath;
       }
     }
     return null;
   }
 
-  /** Load all checks from Prowler providers. */
+  /** Load all checks from Shield providers. */
   loadAllChecks(): LoadedCheck[] {
     const base = this.getProwlerPath();
     if (!base) return [];

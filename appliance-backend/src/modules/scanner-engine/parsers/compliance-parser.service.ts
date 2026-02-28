@@ -32,9 +32,9 @@ const SUPPORTED_PROVIDERS = ["aws", "azure", "gcp", "kubernetes"] as const;
 @Injectable()
 export class ComplianceParserService {
   private getProwlerPath(): string | null {
-    const envPath = process.env.PROWLER_PATH;
+    const envPath = process.env.SHIELD_PATH || process.env.PROWLER_PATH;
     if (envPath && fs.existsSync(envPath)) return envPath;
-    const corePath = process.env.PROWLER_CORE;
+    const corePath = process.env.SHIELD_CORE || process.env.PROWLER_CORE;
     if (corePath && fs.existsSync(corePath)) {
       const pkgPath = path.join(corePath, "prowler");
       if (fs.existsSync(path.join(pkgPath, "compliance"))) return pkgPath;
@@ -43,7 +43,7 @@ export class ComplianceParserService {
     return null;
   }
 
-  /** Parse all compliance frameworks from Prowler. */
+  /** Parse all compliance frameworks from Shield. */
   parseAll(): ParsedComplianceMapping[] {
     const base = this.getProwlerPath();
     if (!base) return [];

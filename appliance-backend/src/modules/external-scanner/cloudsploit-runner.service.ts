@@ -5,18 +5,18 @@ import * as path from "path";
 import * as os from "os";
 import type { ExternalFinding } from "./interfaces/external-finding.interface";
 
-const CLOUDSPLOIT_DIR = process.env.CLOUDSPLOIT_DIR || "/opt/cloudsploit";
-const CLOUDSPLOIT_TIMEOUT_MS = 3600_000; // 1 hour
+const GUARD_DIR = process.env.GUARD_DIR || process.env.CLOUDSPLOIT_DIR || "/opt/guard-core";
+const GUARD_TIMEOUT_MS = 3600_000; // 1 hour
 
 @Injectable()
 export class CloudSploitRunnerService {
   async run(compliance?: string): Promise<ExternalFinding[]> {
-    const indexJs = path.join(CLOUDSPLOIT_DIR, "index.js");
+    const indexJs = path.join(GUARD_DIR, "index.js");
     if (!fs.existsSync(indexJs)) {
       return [];
     }
 
-    const outFile = path.join(os.tmpdir(), `cloudsploit_${Date.now()}.json`);
+    const outFile = path.join(os.tmpdir(), `guard_${Date.now()}.json`);
     const cmd = ["node", indexJs, "--json", outFile, "--console", "none"];
     if (compliance) {
       cmd.push("--compliance", compliance);
@@ -24,8 +24,8 @@ export class CloudSploitRunnerService {
 
     try {
       await this.exec(cmd, {
-        cwd: CLOUDSPLOIT_DIR,
-        timeout: CLOUDSPLOIT_TIMEOUT_MS,
+        cwd: GUARD_DIR,
+        timeout: GUARD_TIMEOUT_MS,
         env: {
           ...process.env,
           AWS_DEFAULT_REGION: process.env.AWS_REGION || "us-east-1",
@@ -75,11 +75,11 @@ export class CloudSploitRunnerService {
         (r.resource as string) ||
         (r.resourceId as string) ||
         (r.ResourceId as string) ||
-        `cloudsploit-${r.plugin || r.pluginId || "unknown"}-${r.region || "global"}`;
+        `guard-${r.plugin || r.pluginId || "unknown"}-${r.region || "global"}`;
       const region = (r.region as string) || (r.Region as string) || "global";
       const plugin = (r.plugin as string) || (r.pluginId as string) || (r.plugin_id as string) || "unknown";
       const resourceType = this.mapResourceType(plugin);
-      const ruleCode = `cloudsploit_${plugin}`;
+      const ruleCode = `guard_${plugin}`;
       const ruleName = (r.title as string) || (r.description as string) || plugin;
       const severity = this.mapSeverity((r.severity as string) || (r.Severity as string));
       const message = (r.message as string) || (r.statusExtended as string) || ruleName;
@@ -87,7 +87,7 @@ export class CloudSploitRunnerService {
       const controlIds = this.extractControlIds(r.compliance as Record<string, unknown> | undefined);
 
       findings.push({
-        source: "cloudsploit",
+        source: "guard",
         resourceId: String(resourceId).slice(0, 512),
         resourceType,
         region,
@@ -136,7 +136,7 @@ export class CloudSploitRunnerService {
         }
       }
     }
-    return ids.length > 0 ? ids : ["CloudSploit"];
+    return ids.length > 0 ? ids : ["Guard"];
   }
 
   private exec(
@@ -154,7 +154,7 @@ export class CloudSploitRunnerService {
       const timeout = opts.timeout || 60000;
       const t = setTimeout(() => {
         child.kill("SIGKILL");
-        reject(new Error("CloudSploit timeout"));
+        reject(new Error("Guard timeout"));
       }, timeout);
 
       child.on("error", (err) => {
@@ -163,7 +163,7 @@ export class CloudSploitRunnerService {
       });
       child.on("close", (code) => {
         clearTimeout(t);
-        // CloudSploit may exit non-zero when findings exist
+        // Guard may exit non-zero when findings exist
         resolve();
       });
     });

@@ -1,15 +1,15 @@
 services:
-  prowler-engine:
+  shield-engine:
     restart: unless-stopped
     build:
-      context: ../appliance-backend/scanner-engine/prowler-engine
+      context: ../appliance-backend/scanner-engine/shield-engine
       dockerfile: Dockerfile
       args:
-        PROWLER_REF: ${PROWLER_REF:-master}
+        SHIELD_REF: ${SHIELD_REF:-master}
     ports:
       - "8001:8001"
     environment:
-      PROWLER_CORE: /app/prowler-core
+      SHIELD_CORE: /app/shield-core
     healthcheck:
       test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://localhost:8001/health')\" || exit 1"]
       interval: 15s
@@ -38,8 +38,8 @@ services:
       context: ../appliance-backend
       dockerfile: Dockerfile
       args:
-        PROWLER_REF: ${PROWLER_REF:-master}
-        CLOUDSPLOIT_REF: ${CLOUDSPLOIT_REF:-master}
+        SHIELD_REF: ${SHIELD_REF:-master}
+        GUARD_REF: ${GUARD_REF:-master}
     ports:
       - "8080:8080"
     environment:
@@ -47,12 +47,13 @@ services:
       PORT: 8080
       NODE_ENV: production
       SCHEDULER_ENABLED: "false"
-      PROWLER_ENGINE_URL: http://prowler-engine:8001
-      PROWLER_CORE: /opt/prowler-core
-      ENABLE_PROWLER: "true"
-      ENABLE_CLOUDSPLOIT: "true"
+      SHIELD_ENGINE_URL: http://shield-engine:8001
+      SHIELD_CORE: /opt/shield-core
+      GUARD_DIR: /opt/guard-core
+      ENABLE_SHIELD: "true"
+      ENABLE_GUARD: "true"
     depends_on:
-      prowler-engine:
+      shield-engine:
         condition: service_healthy
       postgres:
         condition: service_healthy

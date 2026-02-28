@@ -2,7 +2,7 @@ import type { ScanResult } from "../interfaces/scan-result.interface";
 import type { ScanFilter } from "../interfaces/scan-filter.interface";
 import { ProwlerHttpClientService } from "./prowler-http-client.service";
 
-/** Base provider that runs Prowler via Python engine HTTP API (no CLI). */
+/** Base provider that runs Shield via Python engine HTTP API (no CLI). */
 export abstract class BaseProwlerProvider {
   abstract readonly name: string;
 

@@ -1,10 +1,10 @@
 # Scanner Engine Module
 
-Pluggable scanning engine that integrates Prowler rules and compliance mappings from the official [Prowler](https://github.com/prowler-cloud/prowler) repository.
+Pluggable scanning engine that integrates Shield-branded rules and compliance mappings from upstream [Prowler](https://github.com/prowler-cloud/prowler).
 
 ## Architecture
 
-- **Rule execution**: Invokes Prowler CLI (Python) as-is; no logic changes
+- **Rule execution**: Invokes upstream engine (Python) as-is; no logic changes
 - **Compliance mapping**: Parses JSON from `prowler/compliance/<provider>/`
 - **Reporting**: Standardized JSON result format
 
@@ -18,11 +18,11 @@ scanner-engine/
 │   ├── scan-filter.interface.ts
 │   └── scan-result.interface.ts
 ├── loaders/
-│   └── check-loader.service.ts      # Loads metadata from Prowler checks
+│   └── check-loader.service.ts      # Loads metadata from Shield checks
 ├── parsers/
 │   └── compliance-parser.service.ts # Parses compliance JSON files
 ├── providers/
-│   ├── base-provider.ts             # Base Prowler CLI runner
+│   ├── base-provider.ts             # Base Shield engine runner
 │   ├── aws-provider.ts
 │   ├── azure-provider.ts
 │   ├── gcp-provider.ts
@@ -39,7 +39,7 @@ scanner-engine/
 
 ## Database Schema
 
-- **ProwlerCheck**: provider, service, checkName, severity, description, risk, remediation, metadata
+- **ProwlerCheck**: provider, service, checkName, severity, description, risk, remediation, metadata (Shield data source)
 - **ComplianceFramework**: provider, name, framework, version, source
 - **ComplianceMapping**: frameworkId, controlId, checkName
 
@@ -50,7 +50,7 @@ scanner-engine/
 | POST | /api/scanner-engine/scan | Run scan for one provider |
 | POST | /api/scanner-engine/scan/multi | Run scans for multiple providers |
 | GET | /api/scanner-engine/providers | List supported providers |
-| POST | /api/scanner-engine/sync | Sync checks and compliance from Prowler |
+| POST | /api/scanner-engine/sync | Sync checks and compliance from Shield |
 | GET | /api/scanner-engine/checks | List checks (filter: provider, service, severity) |
 | GET | /api/scanner-engine/frameworks | List compliance frameworks |
 | GET | /api/scanner-engine/mappings | List compliance mappings |
@@ -75,10 +75,10 @@ scanner-engine/
 ## Setup
 
 1. **Migration**: Run `npx prisma migrate dev` to create tables
-2. **Sync**: Call `POST /api/scanner-engine/sync` to populate checks and compliance from installed Prowler
+2. **Sync**: Call `POST /api/scanner-engine/sync` to populate checks and compliance from installed Shield
 3. **Scan**: Call `POST /api/scanner-engine/scan` with `{ "provider": "aws", "filter": { "compliance": "cis_1.5_aws" } }`
 
 ## Environment
 
-- `PROWLER_PATH`: Override Prowler installation path (default: auto-detect via `python3 -c "import prowler; ..."`)
-- `PROWLER_BIN`: Prowler CLI binary (default: `prowler`)
+- `SHIELD_PATH`: Override Shield installation path (fallback: `PROWLER_PATH`)
+- `SHIELD_BIN`: Shield CLI binary (fallback: `PROWLER_BIN`, default: `prowler`)

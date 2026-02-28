@@ -71,7 +71,7 @@ export class CloudSploitExecutorService {
     }
 
     const cloud = this.ruleLoader.getCloudName(params.provider);
-    const outFile = path.join(os.tmpdir(), `cloudsploit_${Date.now()}_${cloud}.json`);
+    const outFile = path.join(os.tmpdir(), `guard_${Date.now()}_${cloud}.json`);
 
     const args = ["--json", outFile, "--console", "none", "--cloud", cloud];
     if (params.configPath) args.unshift("--config", params.configPath);
@@ -89,7 +89,7 @@ export class CloudSploitExecutorService {
       const startedAt = new Date();
       this.logger.log(
         JSON.stringify({
-          event: "cloudsploit_scan_start",
+            event: "guard_scan_start",
           scanId: params.scanId,
           provider: params.provider,
           attempt,
@@ -109,7 +109,7 @@ export class CloudSploitExecutorService {
       const endedAt = new Date();
       this.logger.log(
         JSON.stringify({
-          event: "cloudsploit_scan_end",
+          event: "guard_scan_end",
           scanId: params.scanId,
           provider: params.provider,
           attempt,
@@ -139,7 +139,7 @@ export class CloudSploitExecutorService {
       if (attempt <= retryCount && transient) {
         this.logger.warn(
           JSON.stringify({
-            event: "cloudsploit_scan_retry",
+            event: "guard_scan_retry",
             scanId: params.scanId,
             provider: params.provider,
             attempt,
@@ -150,7 +150,7 @@ export class CloudSploitExecutorService {
       }
 
       lastError = new Error(
-        `CloudSploit execution failed (exitCode=${run.exitCode}, timedOut=${run.timedOut}, memoryLimitExceeded=${run.memoryLimitExceeded})`
+        `Guard execution failed (exitCode=${run.exitCode}, timedOut=${run.timedOut}, memoryLimitExceeded=${run.memoryLimitExceeded})`
       );
       break;
     }
@@ -206,7 +206,7 @@ export class CloudSploitExecutorService {
           memoryLimitExceeded = true;
           this.logger.warn(
             JSON.stringify({
-              event: "cloudsploit_memory_limit_exceeded",
+              event: "guard_memory_limit_exceeded",
               scanId,
               provider,
               pid: child.pid,
@@ -271,23 +271,31 @@ export class CloudSploitExecutorService {
 
   private getScanTimeoutMs(provider: string): number {
     const byProvider = Number(
-      process.env[`CLOUDSPLOIT_SCAN_TIMEOUT_${provider.toUpperCase()}`] || NaN
+      process.env[`GUARD_SCAN_TIMEOUT_${provider.toUpperCase()}`] ||
+        process.env[`CLOUDSPLOIT_SCAN_TIMEOUT_${provider.toUpperCase()}`] ||
+        NaN
     );
     if (Number.isFinite(byProvider) && byProvider > 0) {
       return Math.floor(byProvider * 1000);
     }
-    const global = Number(process.env.CLOUDSPLOIT_SCAN_TIMEOUT || 3600);
+    const global = Number(
+      process.env.GUARD_SCAN_TIMEOUT || process.env.CLOUDSPLOIT_SCAN_TIMEOUT || 3600
+    );
     return Number.isFinite(global) && global > 0 ? Math.floor(global * 1000) : 3600_000;
   }
 
   private getMemoryLimitKb(): number {
-    const limitMb = Number(process.env.CLOUDSPLOIT_MEMORY_LIMIT || 1024);
+    const limitMb = Number(
+      process.env.GUARD_MEMORY_LIMIT || process.env.CLOUDSPLOIT_MEMORY_LIMIT || 1024
+    );
     const mb = Number.isFinite(limitMb) && limitMb > 0 ? limitMb : 1024;
     return Math.floor(mb * 1024);
   }
 
   private getRetryCount(): number {
-    const retries = Number(process.env.CLOUDSPLOIT_RETRY_COUNT || 1);
+    const retries = Number(
+      process.env.GUARD_RETRY_COUNT || process.env.CLOUDSPLOIT_RETRY_COUNT || 1
+    );
     return Number.isFinite(retries) && retries >= 0 ? Math.floor(retries) : 1;
   }
 

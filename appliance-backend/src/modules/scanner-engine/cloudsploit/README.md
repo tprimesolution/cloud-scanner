@@ -1,12 +1,12 @@
-# CloudSploit Scanner Engine
+# Guard Scanner Engine
 
-Integrates [CloudSploit](https://github.com/aquasecurity/cloudsploit) security rules into the application. All plugins from AWS, Azure, GCP, and OCI are loaded and executed as-is.
+Integrates upstream [CloudSploit](https://github.com/aquasecurity/cloudsploit) security rules under the Guard brand. All plugins from AWS, Azure, GCP, and OCI are loaded and executed as-is.
 
 ## Architecture
 
 - **Rule loader**: Dynamically loads plugins from `cloudsploit/exports.js`
-- **Executor**: Runs CloudSploit via subprocess (preserves original execution flow)
-- **Collectors**: CloudSploit's built-in collectors run automatically per provider
+- **Executor**: Runs Guard via subprocess (preserves original upstream execution flow)
+- **Collectors**: Upstream CloudSploit collectors run automatically per provider
 - **Result normalizer**: Converts output to standardized JSON format
 
 ## Folder Structure
@@ -34,11 +34,11 @@ cloudsploit/
 
 | Method | Endpoint | Description |
 |--------|----------|-------------|
-| POST | /api/cloudsploit/scan/start | Start scan (async, returns scanId) |
-| GET | /api/cloudsploit/scan/status/:scanId | Get scan status |
-| GET | /api/cloudsploit/scan/results/:scanId | Get scan results |
-| POST | /api/cloudsploit/rules/sync | Sync rules from CloudSploit to DB |
-| GET | /api/cloudsploit/rules | List all loaded rules |
+| POST | /api/guard/scan/start | Start scan (async, returns scanId) |
+| GET | /api/guard/scan/status/:scanId | Get scan status |
+| GET | /api/guard/scan/results/:scanId | Get scan results |
+| POST | /api/guard/rules/sync | Sync rules from Guard to DB |
+| GET | /api/guard/rules | List all loaded rules |
 
 ## Standardized Output Format
 
@@ -58,17 +58,17 @@ cloudsploit/
 
 ## Setup
 
-1. **CloudSploit**: Clone to `CLOUDSPLOIT_DIR` (default `/opt/cloudsploit`):
+1. **Guard upstream source**: Clone CloudSploit to `GUARD_DIR` (default `/opt/guard-core`):
    ```bash
-   git clone --depth 1 https://github.com/aquasecurity/cloudsploit.git /opt/cloudsploit
-   cd /opt/cloudsploit && npm install --omit=dev
+   git clone --depth 1 https://github.com/aquasecurity/cloudsploit.git /opt/guard-core
+   cd /opt/guard-core && npm install --omit=dev
    ```
 
-2. **Database**: Run `npx prisma migrate dev` for CloudSploitRule, CloudSploitScan, CloudSploitScanResult tables
+2. **Database**: Run `npx prisma migrate dev` for Guard tables (`CloudSploitRule`, `CloudSploitScan`, `CloudSploitScanResult`).
 
-3. **Sync rules**: `POST /api/cloudsploit/rules/sync`
+3. **Sync rules**: `POST /api/guard/rules/sync`
 
-4. **Start scan**: `POST /api/cloudsploit/scan/start` with body:
+4. **Start scan**: `POST /api/guard/scan/start` with body:
    ```json
    {
      "provider": "aws",
@@ -80,4 +80,4 @@ cloudsploit/
 
 ## Environment
 
-- `CLOUDSPLOIT_DIR`: Path to CloudSploit repo (default: `/opt/cloudsploit`)
+- `GUARD_DIR`: Path to upstream CloudSploit repo (default: `/opt/guard-core`)

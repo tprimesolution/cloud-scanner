@@ -91,7 +91,7 @@ export class FindingsService {
     });
   }
 
-  /** Upsert finding from Prowler or CloudSploit. Creates ComplianceRule on first sight. */
+  /** Upsert finding from Shield or Guard. Creates ComplianceRule on first sight. */
   async upsertFromExternalFinding(f: ExternalFinding, scanJobId?: string): Promise<void> {
     const rule = await this.ensureExternalRule({
       code: f.ruleCode,

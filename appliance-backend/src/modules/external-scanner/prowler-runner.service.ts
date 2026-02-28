@@ -5,18 +5,18 @@ import * as path from "path";
 import * as os from "os";
 import type { ExternalFinding } from "./interfaces/external-finding.interface";
 
-const PROWLER_BIN = process.env.PROWLER_BIN || "prowler";
-const PROWLER_TIMEOUT_MS = 3600_000; // 1 hour
+const SHIELD_BIN = process.env.SHIELD_BIN || process.env.PROWLER_BIN || "prowler";
+const SHIELD_TIMEOUT_MS = 3600_000; // 1 hour
 
 @Injectable()
 export class ProwlerRunnerService {
   async run(compliance?: string): Promise<ExternalFinding[]> {
-    const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "prowler-"));
-    const outFile = path.join(tmpDir, "prowler_output.json");
-    const outStem = "prowler_output";
+    const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "shield-"));
+    const outFile = path.join(tmpDir, "shield_output.json");
+    const outStem = "shield_output";
 
     const cmd = [
-      PROWLER_BIN,
+      SHIELD_BIN,
       "aws",
       "-M",
       "json",
@@ -33,7 +33,7 @@ export class ProwlerRunnerService {
     try {
       await this.exec(cmd, {
         cwd: tmpDir,
-        timeout: PROWLER_TIMEOUT_MS,
+        timeout: SHIELD_TIMEOUT_MS,
         env: {
           ...process.env,
           AWS_DEFAULT_REGION: process.env.AWS_REGION || "us-east-1",
@@ -96,11 +96,11 @@ export class ProwlerRunnerService {
         (r.ResourceId as string) ||
         (r.ResourceArn as string) ||
         (r.ResourceIdExtended as string) ||
-        `prowler-${r.CheckID || "unknown"}-${r.Region || "global"}`;
+        `shield-${r.CheckID || "unknown"}-${r.Region || "global"}`;
       const region = (r.Region as string) || "global";
       const service = (r.ServiceName as string) || "unknown";
       const resourceType = this.mapResourceType(service);
-      const ruleCode = `prowler_${r.CheckID || "unknown"}`;
+      const ruleCode = `shield_${r.CheckID || "unknown"}`;
       const ruleName = (r.CheckTitle as string) || ruleCode;
       const severity = this.mapSeverity(r.Severity as string);
       const message = (r.StatusExtended as string) || ruleName;
@@ -108,7 +108,7 @@ export class ProwlerRunnerService {
       const controlIds = this.extractControlIds(r.Compliance as Record<string, unknown> | undefined);
 
       findings.push({
-        source: "prowler",
+        source: "shield",
         resourceId: String(resourceId).slice(0, 512),
         resourceType,
         region,
@@ -166,7 +166,7 @@ export class ProwlerRunnerService {
         ids.push(v);
       }
     }
-    return ids.length > 0 ? ids : ["Prowler"];
+    return ids.length > 0 ? ids : ["Shield"];
   }
 
   private exec(
@@ -184,7 +184,7 @@ export class ProwlerRunnerService {
       const timeout = opts.timeout || 60000;
       const t = setTimeout(() => {
         child.kill("SIGKILL");
-        reject(new Error("Prowler timeout"));
+        reject(new Error("Shield timeout"));
       }, timeout);
 
       child.on("error", (err) => {
@@ -193,7 +193,7 @@ export class ProwlerRunnerService {
       });
       child.on("close", (code) => {
         clearTimeout(t);
-        // Prowler may exit non-zero when findings exist; we still want the output
+        // Shield may exit non-zero when findings exist; we still want the output
         resolve();
       });
     });

@@ -2,10 +2,10 @@ import { Module } from "@nestjs/common";
 import { DashboardController } from "./dashboard.controller";
 import { DashboardService } from "./dashboard.service";
 import { PrismaService } from "../../shared/prisma.service";
-import { CloudSploitModule } from "../scanner-engine/cloudsploit/cloudsploit.module";
+import { GuardEngineModule } from "../scanner-engine/guard-engine/guard-engine.module";
 
 @Module({
-  imports: [CloudSploitModule],
+  imports: [GuardEngineModule],
   controllers: [DashboardController],
   providers: [DashboardService, PrismaService],
 })

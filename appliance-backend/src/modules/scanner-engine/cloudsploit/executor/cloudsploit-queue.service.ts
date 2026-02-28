@@ -10,7 +10,11 @@ export class CloudSploitQueueService {
   private readonly queue: QueueTask[] = [];
 
   constructor(private readonly metrics: CloudSploitMetricsService) {
-    const parsed = Number(process.env.CLOUDSPLOIT_MAX_CONCURRENT_SCANS || 2);
+    const parsed = Number(
+      process.env.GUARD_MAX_CONCURRENT_SCANS ||
+      process.env.CLOUDSPLOIT_MAX_CONCURRENT_SCANS ||
+      2
+    );
     this.maxConcurrentScans = Number.isFinite(parsed) && parsed > 0 ? parsed : 2;
     this.metrics.setConcurrency(this.maxConcurrentScans);
   }

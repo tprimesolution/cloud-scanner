@@ -1,0 +1,6 @@
+# Prowler engine - runs Prowler rules via direct Python import (no CLI)
+# Prowler is installed from prowler-core via: pip install -e ../prowler-core
+prowler>=4.0.0
+fastapi>=0.104.0
+uvicorn>=0.24.0
+boto3>=1.34.0

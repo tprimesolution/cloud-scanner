@@ -4,7 +4,7 @@ import { CloudSploitRuleLoaderService } from "./loaders/rule-loader.service";
 import { PrismaService } from "../../../shared/prisma.service";
 import type { CloudSploitScanInput } from "./interfaces/cloudsploit-scan.interface";
 
-@Controller("cloudsploit")
+@Controller("guard")
 export class CloudSploitScanController {
   constructor(
     private readonly scanService: CloudSploitScanService,
@@ -34,7 +34,7 @@ export class CloudSploitScanController {
     return results;
   }
 
-  /** Sync rules from CloudSploit to database. */
+  /** Sync rules from Guard to database. */
   @Post("rules/sync")
   async syncRules() {
     const rules = this.ruleLoader.loadAllRules();

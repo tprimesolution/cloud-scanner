@@ -134,15 +134,15 @@ export class ScanOrchestratorService {
       }
     }
 
-    // Run Prowler (572+ checks) and CloudSploit (600+ plugins) for full coverage
-    const enableProwler = process.env.ENABLE_PROWLER !== "false";
-    const enableCloudSploit = process.env.ENABLE_CLOUDSPLOIT !== "false";
-    if (enableProwler || enableCloudSploit) {
+    // Run Shield and Guard scanners for full coverage.
+    const enableShield = (process.env.ENABLE_SHIELD ?? process.env.ENABLE_PROWLER) !== "false";
+    const enableGuard = (process.env.ENABLE_GUARD ?? process.env.ENABLE_CLOUDSPLOIT) !== "false";
+    if (enableShield || enableGuard) {
       const externalCount = await this.externalScanner.runExternalScans(scanJobId, {
-        enableProwler,
-        enableCloudSploit,
-        prowlerCompliance: process.env.PROWLER_COMPLIANCE,
-        cloudsploitCompliance: process.env.CLOUDSPLOIT_COMPLIANCE,
+        enableShield,
+        enableGuard,
+        shieldCompliance: process.env.SHIELD_COMPLIANCE ?? process.env.PROWLER_COMPLIANCE,
+        guardCompliance: process.env.GUARD_COMPLIANCE ?? process.env.CLOUDSPLOIT_COMPLIANCE,
       });
       findingCount += externalCount;
     }

@@ -42,7 +42,7 @@ export class ScannerEngineController {
     return { providers: this.engine.getProviders() };
   }
 
-  /** Sync checks and compliance from Prowler. */
+  /** Sync checks and compliance from Shield. */
   @Post("sync")
   @HttpCode(HttpStatus.OK)
   async sync() {

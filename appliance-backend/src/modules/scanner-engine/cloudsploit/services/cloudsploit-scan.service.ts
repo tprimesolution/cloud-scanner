@@ -48,6 +48,7 @@ export class CloudSploitScanService {
     if (!scan) return null;
     return {
       id: scan.id,
+      engineType: "guard",
       provider: scan.provider,
       status: scan.status,
       startedAt: scan.startedAt,
@@ -85,6 +86,7 @@ export class CloudSploitScanService {
 
     return {
       scanId: scan.id,
+      engineType: "guard",
       status: scan.status,
       resultCount: scan.results.length,
       results: normalized,
@@ -107,7 +109,8 @@ export class CloudSploitScanService {
     });
     this.logger.log(
       JSON.stringify({
-        event: "cloudsploit_run_scan_start",
+        event: "guard_run_scan_start",
+        engineType: "guard",
         scanId,
         provider: input.provider,
         startedAt: new Date(started).toISOString(),
@@ -179,7 +182,8 @@ export class CloudSploitScanService {
         });
       this.logger.log(
         JSON.stringify({
-          event: "cloudsploit_run_scan_complete",
+          event: "guard_run_scan_complete",
+          engineType: "guard",
           scanId,
           provider: input.provider,
           durationMs: Date.now() - started,
@@ -195,7 +199,8 @@ export class CloudSploitScanService {
       const stack = err instanceof Error ? err.stack : undefined;
       this.logger.error(
         JSON.stringify({
-          event: "cloudsploit_run_scan_failed",
+          event: "guard_run_scan_failed",
+          engineType: "guard",
           scanId,
           provider: input.provider,
           durationMs: Date.now() - started,

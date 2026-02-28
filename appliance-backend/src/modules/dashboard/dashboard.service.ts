@@ -45,7 +45,7 @@ export class DashboardService {
             notApplicable: latestCoverage.notApplicable,
           }
         : null,
-      cloudsploitExecution: this.cloudsploitScanService.getExecutionMetrics(),
+      guardExecution: this.cloudsploitScanService.getExecutionMetrics(),
     };
   }
 

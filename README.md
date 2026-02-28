@@ -2,7 +2,7 @@
 
 Unified security scanning platform for AWS. NestJS backend (appliance-backend), Next.js frontend.
 
-**Scanner coverage:** Native rules (S3, IAM, EC2, RDS, CloudTrail) + **Prowler** (572+ AWS checks, 41 frameworks) + **CloudSploit** (600+ plugins).
+**Scanner coverage:** Native rules (S3, IAM, EC2, RDS, CloudTrail) + **Shield** (572+ AWS checks, 41 frameworks) + **Guard** (600+ plugins).
 
 ## Quick Deploy (Amazon Linux EC2)
 
@@ -49,11 +49,11 @@ docker compose up -d --build
 This will start:
 
 - PostgreSQL on port 5432
-- appliance-backend (NestJS) on port 8080 — includes Prowler + CloudSploit
+- appliance-backend (NestJS) on port 8080 — includes Shield + Guard
 - Next.js frontend (via nginx)
 - nginx on port 80
 
-**First build** may take 5–10 min (installs Prowler and CloudSploit).
+**First build** may take 5–10 min (installs Shield and Guard).
 
 ### Database
 
@@ -65,7 +65,7 @@ Open http://localhost (or http://localhost:80) in your browser.
 
 ## Development Notes
 
-- Backend: NestJS + Prisma + PostgreSQL. Scanner runs native rules + Prowler + CloudSploit.
+- Backend: NestJS + Prisma + PostgreSQL. Scanner runs native rules + Shield + Guard.
 - Frontend: Next.js + TailwindCSS with Recharts.
 - API base: `http://localhost:8080/api`
 
@@ -90,10 +90,10 @@ curl http://localhost:8080/api/dashboard/compliance-score
 
 | Variable | Default | Description |
 |----------|---------|-------------|
-| `ENABLE_PROWLER` | `true` | Run Prowler (572+ checks) during scan |
-| `ENABLE_CLOUDSPLOIT` | `true` | Run CloudSploit (600+ plugins) during scan |
-| `PROWLER_COMPLIANCE` | — | Optional: `cis`, `pci`, `hipaa` |
-| `CLOUDSPLOIT_DIR` | `/opt/cloudsploit` | CloudSploit install path |
+| `ENABLE_SHIELD` | `true` | Run Shield (572+ checks) during scan |
+| `ENABLE_GUARD` | `true` | Run Guard (600+ plugins) during scan |
+| `SHIELD_COMPLIANCE` | — | Optional: `cis`, `pci`, `hipaa` |
+| `GUARD_DIR` | `/opt/guard-core` | Guard install path |
 
 ## Next Steps
 

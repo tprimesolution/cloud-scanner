@@ -1,6 +1,6 @@
-/** External finding from Prowler or CloudSploit. */
+/** External finding from Shield or Guard. */
 export interface ExternalFinding {
-  source: "prowler" | "cloudsploit";
+  source: "shield" | "guard";
   resourceId: string;
   resourceType: string;
   region: string;

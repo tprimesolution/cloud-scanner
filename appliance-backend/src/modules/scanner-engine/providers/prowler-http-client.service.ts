@@ -2,8 +2,10 @@ import { Injectable } from "@nestjs/common";
 import type { ScanFilter } from "../interfaces/scan-filter.interface";
 import type { ScanResult } from "../interfaces/scan-result.interface";
 
-const PROWLER_ENGINE_URL =
-  process.env.PROWLER_ENGINE_URL || "http://localhost:8001";
+const SHIELD_ENGINE_URL =
+  process.env.SHIELD_ENGINE_URL ||
+  process.env.PROWLER_ENGINE_URL ||
+  "http://localhost:8001";
 
 export interface ProwlerEngineScanRequest {
   provider: string;
@@ -22,7 +24,7 @@ export class ProwlerHttpClientService {
   private readonly baseUrl: string;
 
   constructor() {
-    this.baseUrl = PROWLER_ENGINE_URL.replace(/\/$/, "");
+    this.baseUrl = SHIELD_ENGINE_URL.replace(/\/$/, "");
   }
 
   async runScan(
@@ -48,7 +50,7 @@ export class ProwlerHttpClientService {
 
     if (!res.ok) {
       const text = await res.text();
-      throw new Error(`Prowler engine error ${res.status}: ${text}`);
+      throw new Error(`Shield engine error ${res.status}: ${text}`);
     }
 
     const data = (await res.json()) as { results: ScanResult[] };

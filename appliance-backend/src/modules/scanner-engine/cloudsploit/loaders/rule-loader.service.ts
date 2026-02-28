@@ -2,7 +2,10 @@ import { Injectable } from "@nestjs/common";
 import * as fs from "fs";
 import * as path from "path";
 
-const CLOUDSPLOIT_DIR = process.env.CLOUDSPLOIT_DIR || "/opt/cloudsploit";
+const GUARD_DIR =
+  process.env.GUARD_DIR ||
+  process.env.CLOUDSPLOIT_DIR ||
+  "/opt/guard-core";
 const PROVIDER_MAP: Record<string, string> = {
   aws: "aws",
   azure: "azure",
@@ -24,12 +27,12 @@ export class CloudSploitRuleLoaderService {
   private exportsModule: Record<string, Record<string, { title?: string; category?: string; severity?: string; description?: string; compliance?: Record<string, string> }>> | null = null;
 
   getCloudSploitDir(): string {
-    return CLOUDSPLOIT_DIR;
+    return GUARD_DIR;
   }
 
   /** Load all rules from CloudSploit exports.js. */
   loadAllRules(): LoadedRule[] {
-    const exportsPath = path.join(CLOUDSPLOIT_DIR, "exports.js");
+    const exportsPath = path.join(GUARD_DIR, "exports.js");
     if (!fs.existsSync(exportsPath)) return [];
 
     try {
