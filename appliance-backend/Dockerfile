@@ -40,7 +40,7 @@ ENV NODE_ENV=production
 ENV PORT=8080
 ENV GUARD_DIR=/opt/guard-core
 
-RUN apk add --no-cache su-exec openssl && \
+RUN apk add --no-cache su-exec openssl wget && \
     addgroup -g 1001 -S app && \
     adduser -S app -u 1001 -G app
 
@@ -54,6 +54,6 @@ COPY docker-entrypoint.sh ./
 RUN chmod +x docker-entrypoint.sh && chown -R app:app /app /opt/guard-core /opt/shield-core
 
 EXPOSE 8080
-HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 CMD wget -qO- http://localhost:8080/api/health/ready || exit 1
+HEALTHCHECK --interval=30s --timeout=5s --start-period=45s --retries=5 CMD wget -qO- http://localhost:8080/api/health/ready || exit 1
 
 ENTRYPOINT ["./docker-entrypoint.sh"]
