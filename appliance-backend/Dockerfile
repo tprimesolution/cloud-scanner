@@ -45,6 +45,8 @@ RUN apk add --no-cache su-exec openssl wget && \
     adduser -S app -u 1001 -G app
 
 COPY --from=prod-deps /app/node_modules ./node_modules
+# Use Prisma client generated at build time (prod-deps never runs prisma generate)
+COPY --from=builder /app/node_modules/.prisma ./node_modules/.prisma
 COPY --from=builder /app/dist ./dist
 COPY --from=builder /app/prisma ./prisma
 COPY --from=builder /app/package.json ./
