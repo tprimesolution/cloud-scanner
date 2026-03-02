@@ -10,11 +10,13 @@ import { ScannerEngineService } from "./services/scanner-engine.service";
 import { ScannerEngineSyncService } from "./services/sync.service";
 import { ScannerEngineController } from "./scanner-engine.controller";
 import { ScannerEngineChecksController } from "./scanner-engine-checks.controller";
+import { ScannerEngineStatsController } from "./scanner-engine-stats.controller";
+import { ScannerStatsService } from "./services/scanner-stats.service";
 import { PrismaService } from "../../shared/prisma.service";
 
 @Module({
   imports: [],
-  controllers: [ScannerEngineController, ScannerEngineChecksController],
+  controllers: [ScannerEngineController, ScannerEngineChecksController, ScannerEngineStatsController],
   providers: [
     PrismaService,
     ProwlerHttpClientService,
@@ -26,7 +28,8 @@ import { PrismaService } from "../../shared/prisma.service";
     KubernetesProvider,
     ScannerEngineService,
     ScannerEngineSyncService,
+    ScannerStatsService,
   ],
-  exports: [ScannerEngineService, ScannerEngineSyncService, CheckLoaderService, ComplianceParserService],
+  exports: [ScannerEngineService, ScannerEngineSyncService, CheckLoaderService, ComplianceParserService, ScannerStatsService],
 })
 export class ScannerEngineModule {}

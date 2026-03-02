@@ -5,6 +5,11 @@ import { DashboardService } from "./dashboard.service";
 export class DashboardController {
   constructor(private readonly dashboard: DashboardService) {}
 
+  @Get("overview")
+  getOverview() {
+    return this.dashboard.getOverview();
+  }
+
   @Get("metrics")
   getMetrics() {
     return this.dashboard.getMetrics();

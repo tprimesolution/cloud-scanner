@@ -242,6 +242,19 @@ model ScanJob {
   @@index([status, createdAt])
 }
 
+// Point-in-time summary of security posture for a completed scan job.
+model ScanSnapshot {
+  id             String   @id @default(cuid())
+  scanJobId      String
+  complianceScore Int
+  riskScore       Int
+  createdAt      DateTime @default(now())
+
+  scanJob ScanJob @relation(fields: [scanJobId], references: [id], onDelete: Cascade)
+
+  @@index([scanJobId])
+}
+
 model CollectedResource {
   id         String   @id @default(cuid())
   scanJobId  String

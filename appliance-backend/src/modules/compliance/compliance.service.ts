@@ -62,6 +62,22 @@ const FRAMEWORKS: { id: string; name: string; description: string }[] = [
   { id: "ITAR", name: "ITAR", description: "International Traffic in Arms Regulations" },
 ];
 
+// Frameworks for which we should NOT compute % scoring or treat as primary compliance frameworks.
+// These are kept for metadata/reference only and excluded from getFrameworks().
+const EXCLUDED_SCORING_FRAMEWORK_IDS = new Set<string>([
+  "GDPR",
+  "CCPA",
+  "ITIL",
+  "COBIT",
+  "BSIMM",
+  "AICPA",
+  "ITAR",
+  "OWASP",
+  "CWE",
+  "CVE",
+  "MITRE-ATT&CK",
+]);
+
 const CATEGORIES: { id: string; name: string; description: string }[] = [
   { id: "access-control", name: "Access Control", description: "Identity and access management controls" },
   { id: "encryption", name: "Encryption", description: "Data encryption at rest and in transit" },
@@ -103,7 +119,7 @@ export class ComplianceService {
       }
     }
 
-    return FRAMEWORKS.map((fw) => {
+    return FRAMEWORKS.filter((fw) => !EXCLUDED_SCORING_FRAMEWORK_IDS.has(fw.id)).map((fw) => {
       const findingCount = findingCountByFramework[fw.id] ?? 0;
       const score = Math.max(0, 100 - findingCount * 4);
       return {

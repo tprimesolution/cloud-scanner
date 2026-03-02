@@ -9,6 +9,77 @@ export class DashboardService {
     private readonly cloudsploitScanService: CloudSploitScanService
   ) {}
 
+  /**
+   * High-level risk-centric overview used by the redesigned dashboard.
+   *
+   * This does not change scanning logic; it only aggregates existing findings
+   * and scan metadata into risk-focused metrics.
+   */
+  async getOverview() {
+    const latestJob = await this.prisma.scanJob.findFirst({
+      where: { status: "completed" },
+      orderBy: { completedAt: "desc" },
+      select: { id: true, resourceCount: true, findingCount: true, completedAt: true },
+    });
+
+    const scanJobId = latestJob?.id;
+
+    // Total assets for the latest completed scan.
+    const totalAssets = scanJobId
+      ? await this.prisma.collectedResource.count({ where: { scanJobId } })
+      : 0;
+
+    // Open findings for the latest scan (fallback to all open if no scan is available).
+    const findingWhere = scanJobId
+      ? { status: "open" as const, scanJobId }
+      : { status: "open" as const };
+
+    const [criticalCount, identityRiskCount, exposureCounts] = await Promise.all([
+      this.prisma.finding.count({
+        where: { ...findingWhere, severity: "critical" },
+      }),
+      // Identity risks: IAM-related resource types or IAM-prefixed rule codes.
+      this.prisma.finding.count({
+        where: {
+          ...findingWhere,
+          OR: [
+            { resourceType: { in: ["iam_user", "iam_role", "iam_policy", "iam_root"] } },
+            { ruleCode: { startsWith: "IAM_" } },
+          ],
+        },
+      }),
+      this.aggregateExposureCounts(findingWhere),
+    ]);
+
+    const exposedAssets =
+      exposureCounts.publicEc2 + exposureCounts.publicDatabases + exposureCounts.openSecurityGroups + exposureCounts.exposedKubernetes;
+
+    const riskSummary = {
+      total_assets: totalAssets,
+      exposed_assets: exposedAssets,
+      critical_risks: criticalCount,
+      identity_risk_count: identityRiskCount,
+      security_posture_score: this.computeSecurityPostureScore(
+        criticalCount,
+        exposureCounts,
+        latestJob?.resourceCount ?? 0
+      ),
+    };
+
+    const severity_distribution = await this.getFindingsBySeverity();
+    const rule_coverage_stats = await this.getBaselineCoverage();
+
+    return {
+      risk_summary: riskSummary,
+      attack_surface: exposureCounts,
+      severity_distribution,
+      rule_coverage_stats,
+      compliance_scores: {
+        baseline: rule_coverage_stats,
+      },
+    };
+  }
+
   async getMetrics() {
     const latestJob = await this.prisma.scanJob.findFirst({
       where: { status: "completed" },
@@ -210,5 +281,131 @@ export class DashboardService {
       notApplicable,
       lastEvaluated: latest.createdAt,
     };
+  }
+
+  /**
+   * Aggregate attack surface counts for the given predicate.
+   */
+  private async aggregateExposureCounts(
+    where: { status: "open"; scanJobId?: string }
+  ): Promise<{
+    publicEc2: number;
+    publicDatabases: number;
+    openSecurityGroups: number;
+    exposedKubernetes: number;
+  }> {
+    const [publicEc2, publicDatabases, openSecurityGroups, exposedKubernetes] = await Promise.all([
+      this.prisma.finding.count({
+        where: {
+          ...where,
+          resourceType: "ec2_instance",
+          severity: { in: ["critical", "high"] },
+        },
+      }),
+      this.prisma.finding.count({
+        where: {
+          ...where,
+          resourceType: { in: ["rds_instance", "database", "aurora_cluster"] },
+          severity: { in: ["critical", "high"] },
+        },
+      }),
+      this.prisma.finding.count({
+        where: {
+          ...where,
+          resourceType: "security_group",
+          severity: { in: ["critical", "high"] },
+        },
+      }),
+      this.prisma.finding.count({
+        where: {
+          ...where,
+          resourceType: { in: ["eks_cluster", "kubernetes_cluster"] },
+          severity: { in: ["critical", "high"] },
+        },
+      }),
+    ]);
+
+    return {
+      publicEc2,
+      publicDatabases,
+      openSecurityGroups,
+      exposedKubernetes,
+    };
+  }
+
+  private computeSecurityPostureScore(
+    criticalFindings: number,
+    exposure: { publicEc2: number; publicDatabases: number; openSecurityGroups: number; exposedKubernetes: number },
+    assetCount: number
+  ): number {
+    // Simple, explainable risk scoring:
+    // - Critical findings and exposed assets are heavily weighted.
+    const exposureScore =
+      exposure.publicEc2 * 5 +
+      exposure.publicDatabases * 7 +
+      exposure.openSecurityGroups * 3 +
+      exposure.exposedKubernetes * 6;
+
+    const rawPenalty = criticalFindings * 4 + exposureScore;
+    // Normalize by asset count to avoid penalizing larger environments too harshly.
+    const normalization = Math.max(1, assetCount / 50);
+    const penalty = Math.min(100, Math.round(rawPenalty / normalization));
+    return Math.max(0, 100 - penalty);
+  }
+
+  /**
+   * Security Baseline Coverage limited to automated frameworks:
+   * - CIS
+   * - NIST technical control families
+   */
+  private async getBaselineCoverage() {
+    const latest = await this.prisma.complianceControlStatus.findFirst({
+      orderBy: { createdAt: "desc" },
+      select: { scanId: true },
+    });
+    if (!latest) {
+      return [];
+    }
+
+    const frameworks = ["CIS", "NIST-800-53"];
+
+    const results: {
+      framework: string;
+      total_controls: number;
+      automatable_controls: number;
+      passed_controls: number;
+      compliance_percentage: number;
+      coverage_percentage: number;
+    }[] = [];
+
+    for (const fw of frameworks) {
+      const rows = await this.prisma.complianceControlStatus.findMany({
+        where: { scanId: latest.scanId, framework: fw },
+      });
+      if (rows.length === 0) continue;
+
+      const totalControls = new Set(rows.map((r) => r.controlId)).size;
+      const passed = rows.filter((r) => r.status === "PASSED").length;
+      const failed = rows.filter((r) => r.status === "FAILED").length;
+      const notEvaluated = rows.filter((r) => r.status === "NOT_EVALUATED").length;
+      const notApplicable = rows.filter((r) => r.isNotApplicable).length;
+
+      const applicable = passed + failed;
+      const coverageDenominator = applicable + notEvaluated + notApplicable;
+      const compliancePercent = applicable > 0 ? Math.round((passed / applicable) * 100) : 0;
+      const coveragePercent =
+        coverageDenominator > 0 ? Math.round((applicable / coverageDenominator) * 100) : 0;
+
+      results.push({
+        framework: fw,
+        total_controls: totalControls,
+        automatable_controls: totalControls,
+        passed_controls: passed,
+        compliance_percentage: compliancePercent,
+        coverage_percentage: coveragePercent,
+      });
+    }
+
+    return results;
   }
 }

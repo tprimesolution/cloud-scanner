@@ -18,6 +18,7 @@ from .metrics import metrics
 from .rule_loader import discover_checks
 from .scan_queue import ScanJobQueue
 from .settings import get_settings
+from scanner.orchestrator import run_infra_scan
 
 logger = logging.getLogger(__name__)
 settings = get_settings()
@@ -43,6 +44,22 @@ class ScanRequest(BaseModel):
 
 
 class ScanResponse(BaseModel):
+    results: list[dict[str, Any]]
+
+
+class InfraScanRequest(BaseModel):
+    account_id: Optional[str] = None
+    role_arn: Optional[str] = None
+    regions: Optional[list[str]] = None
+    scopes: Optional[list[str]] = None
+
+
+class InfraScanResponse(BaseModel):
+    account_id: str
+    regions: list[str]
+    scopes: list[str]
+    risk: dict[str, Any]
+    summary: dict[str, Any]
     results: list[dict[str, Any]]
 
 
@@ -152,6 +169,18 @@ async def health() -> dict[str, Any]:
         "queue_size": scan_queue.size(),
         "compatibility": compatibility_report,
     }
+
+
+@app.post("/infra-scan", response_model=InfraScanResponse)
+async def infra_scan(req: InfraScanRequest) -> InfraScanResponse:
+    """Run Nimbus Guard AWS infra scanner (IAM, network, storage, etc.)."""
+    result = await run_infra_scan(
+        account_id=req.account_id,
+        role_arn=req.role_arn,
+        regions=req.regions,
+        scopes=req.scopes,
+    )
+    return InfraScanResponse(**result)
 
 
 def main() -> None:

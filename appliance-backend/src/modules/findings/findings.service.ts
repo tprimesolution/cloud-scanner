@@ -81,7 +81,25 @@ export class FindingsService {
       this.prisma.finding.count({ where }),
     ]);
 
-    return { items, total };
+    const enriched = items.map((f) => {
+      const exposureType = deriveExposureType(f.resourceType, f.ruleCode, f.message);
+      const exploitabilityScore = deriveExploitabilityScore(f.severity, exposureType);
+      const attackPathIndicator = deriveAttackPathIndicator(f.ruleCode, exposureType);
+
+      return {
+        ...f,
+        accountId: (f.rawResource as { accountId?: string } | null)?.accountId ?? undefined,
+        region: (f.rawResource as { region?: string } | null)?.region ?? undefined,
+        riskCategory: exposureType,
+        firstDetected: f.firstSeenAt,
+        lastDetected: f.lastSeenAt,
+        exposure_type: exposureType,
+        exploitability_score: exploitabilityScore,
+        attack_path_indicator: attackPathIndicator,
+      };
+    });
+
+    return { items: enriched, total };
   }
 
   async updateStatus(id: string, status: string): Promise<void> {
@@ -154,3 +172,55 @@ export class FindingsService {
     });
   }
 }
+
+function deriveExposureType(
+  resourceType: string,
+  ruleCode: string,
+  message: string
+): string {
+  const code = ruleCode.toLowerCase();
+  const msg = message.toLowerCase();
+
+  if (resourceType === "ec2_instance" && (code.includes("public") || msg.includes("public"))) {
+    return "PUBLIC_COMPUTE";
+  }
+  if (["rds_instance", "database"].includes(resourceType) && (code.includes("public") || msg.includes("public"))) {
+    return "PUBLIC_DATABASE";
+  }
+  if (resourceType === "security_group" && (code.includes("sg_open") || msg.includes("0.0.0.0/0"))) {
+    return "OPEN_SECURITY_GROUP";
+  }
+  if (["eks_cluster", "kubernetes_cluster"].includes(resourceType) && (code.includes("eks_public") || msg.includes("public endpoint"))) {
+    return "EXPOSED_KUBERNETES";
+  }
+  if (ruleCode.startsWith("IAM_") || resourceType.startsWith("iam_")) {
+    return "IDENTITY_PRIVILEGE";
+  }
+  return "CONFIG_HARDENING";
+}
+
+function deriveExploitabilityScore(severity: string, exposureType: string): number {
+  const sev = severity.toLowerCase();
+  let base = 20;
+  if (sev === "critical") base = 90;
+  else if (sev === "high") base = 70;
+  else if (sev === "medium") base = 50;
+  else base = 30;
+
+  if (exposureType === "PUBLIC_COMPUTE" || exposureType === "PUBLIC_DATABASE") base += 5;
+  if (exposureType === "OPEN_SECURITY_GROUP" || exposureType === "EXPOSED_KUBERNETES") base += 3;
+
+  return Math.max(0, Math.min(100, base));
+}
+
+function deriveAttackPathIndicator(ruleCode: string, exposureType: string): boolean {
+  const lower = ruleCode.toLowerCase();
+  if (lower.includes("priv_esc") || lower.includes("iam_priv") || lower.includes("lateral")) {
+    return true;
+  }
+  if (["PUBLIC_COMPUTE", "PUBLIC_DATABASE", "EXPOSED_KUBERNETES"].includes(exposureType)) {
+    return true;
+  }
+  return false;
+}
+

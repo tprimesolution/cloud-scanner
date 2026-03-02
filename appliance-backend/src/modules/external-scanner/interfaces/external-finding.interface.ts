@@ -1,4 +1,4 @@
-/** External finding from Shield or Guard. */
+/** External finding from Shield, Guard, or infra scanner. */
 export interface ExternalFinding {
   source: "shield" | "guard";
   resourceId: string;
