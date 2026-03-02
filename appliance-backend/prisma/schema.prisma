@@ -238,6 +238,7 @@ model ScanJob {
 
   collectedResources CollectedResource[]
   findings          Finding[]
+  snapshots         ScanSnapshot[]
 
   @@index([status, createdAt])
 }
