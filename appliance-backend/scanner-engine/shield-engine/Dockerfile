@@ -33,7 +33,9 @@ WORKDIR /app
 COPY --from=builder /opt/venv /opt/venv
 COPY --from=prowler-src /app/shield-core /app/shield-core
 
+# Application code
 COPY prowler_engine ./prowler_engine
+COPY scanner ./scanner
 
 EXPOSE 8001
 ENV SHIELD_CORE=/app/shield-core
