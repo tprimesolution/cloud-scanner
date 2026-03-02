@@ -24,6 +24,11 @@ async function bootstrap() {
     rateLimit({
       windowMs: 60_000,
       max: 120, // 120 requests/min per IP – conservative for t3.small
+      // Disable strict trust proxy validation in express-rate-limit since we
+      // explicitly configure Express' own trust proxy setting above.
+      validate: {
+        trustProxy: false,
+      },
     })
   );
 
