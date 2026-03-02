@@ -1,5 +1,5 @@
 import { Injectable } from "@nestjs/common";
-import { PrismaService } from "../../shared/prisma.service";
+import { PrismaService } from "../../../shared/prisma.service";
 
 export interface ScannerEngineStats {
   totalRawRules: number;
