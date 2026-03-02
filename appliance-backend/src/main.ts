@@ -15,8 +15,8 @@ async function bootstrap() {
   app.setGlobalPrefix("api");
   app.enableCors({ origin: true });
 
-  // Trust X-Forwarded-For when behind nginx/reverse proxy (required for express-rate-limit)
-  app.set("trust proxy", true);
+  // Trust exactly one proxy (nginx); avoids express-rate-limit ERR_ERL_PERMISSIVE_TRUST_PROXY
+  app.set("trust proxy", 1);
 
   app.use(helmet());
   app.use(compression());
