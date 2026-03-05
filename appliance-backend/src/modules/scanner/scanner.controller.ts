@@ -1,5 +1,7 @@
 import { Controller, Get, Post, Body, Param, Query } from "@nestjs/common";
 import { ScannerService } from "./scanner.service";
+import { UpdateFindingStatusDto } from "./dto/update-finding-status.dto";
+import { GetFindingsQueryDto } from "./dto/get-findings-query.dto";
 
 @Controller("scanner")
 export class ScannerController {
@@ -26,26 +28,16 @@ export class ScannerController {
   }
 
   @Get("findings")
-  async getFindings(
-    @Query("status") status?: string,
-    @Query("severity") severity?: string,
-    @Query("limit") limit?: string,
-    @Query("offset") offset?: string,
-  ) {
-    return this.scannerService.getFindings({
-      status,
-      severity,
-      limit: limit ? parseInt(limit, 10) : undefined,
-      offset: offset ? parseInt(offset, 10) : undefined,
-    });
+  async getFindings(@Query() query: GetFindingsQueryDto) {
+    return this.scannerService.getFindings(query);
   }
 
   @Post("findings/:id/status")
   async updateFindingStatus(
     @Param("id") id: string,
-    @Body("status") status: string,
+    @Body() body: UpdateFindingStatusDto,
   ) {
-    await this.scannerService.updateFindingStatus(id, status);
+    await this.scannerService.updateFindingStatus(id, body.status);
     return { ok: true };
   }
 }

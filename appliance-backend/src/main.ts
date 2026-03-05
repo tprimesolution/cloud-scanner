@@ -6,14 +6,24 @@ import { ValidationPipe } from "@nestjs/common";
 import helmet from "helmet";
 import compression from "compression";
 import rateLimit from "express-rate-limit";
+import { ConfigService } from "@nestjs/config";
+import { ApiKeyGuard } from "./shared/guards/api-key.guard";
 
 async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule, {
     logger: process.env.NODE_ENV === "production" ? ["error", "warn"] : ["log", "error", "warn", "debug"],
   });
 
+  const configService = app.get(ConfigService);
   app.setGlobalPrefix("api");
-  app.enableCors({ origin: true });
+
+  const allowedOrigins = configService.get<string>("ALLOWED_ORIGINS");
+  app.enableCors({
+    origin: allowedOrigins ? allowedOrigins.split(",") : true,
+    methods: "GET,HEAD,PUT,PATCH,POST,DELETE",
+    preflightContinue: false,
+    optionsSuccessStatus: 204,
+  });
 
   // Trust exactly one proxy (nginx); avoids express-rate-limit ERR_ERL_PERMISSIVE_TRUST_PROXY
   app.set("trust proxy", 1);
@@ -31,6 +41,8 @@ async function bootstrap() {
       },
     })
   );
+
+  app.useGlobalGuards(new ApiKeyGuard(configService));
 
   app.useGlobalPipes(
     new ValidationPipe({
